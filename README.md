@@ -1,41 +1,35 @@
-# Website
+# Volcano Website Migration (Hugo → Docusaurus)
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This repository contains my ongoing migration work for the Volcano website as part of my LFX application.
 
-## Installation
+🔗 Live Preview (Vercel)
+https://volcano-docusaurus-migration.vercel.app
 
-```bash
-yarn
-```
+## What has been migrated so far
 
-## Local Development
+### Docusaurus Setup
+- Full Docusaurus site initialized
+- Navbar + footer recreated
+- Tried to match the original Hugo site's font and styling
 
-```bash
-yarn start
-```
+### Documentation
+- Versioning system configured
+- Latest version fully migrated (v1.13)
+- Docs structure recreated
+- All images added and linked
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+### Blog
+- Blog section migrated
+- Blog cards & styling matched with original Hugo site
+- All images added and linked
 
-## Build
+### Features implemented
+- Local search plugin integrated
+- Dark mode styling aligned
 
-```bash
-yarn build
-```
+## Work in Progress
+- Remaining docs versions migration
+- Chinese i18n fixes
+- Broken links cleanup
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+This repo is a **migration preview**, not final production code.
