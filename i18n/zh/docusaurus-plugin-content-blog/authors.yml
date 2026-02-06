@@ -1,0 +1,12 @@
+volcano:
+  name: Volcano
+  url: https://volcano.sh
+  image_url: https://volcano.sh/img/volcano_logo.svg
+
+paddlepaddle-team:
+  name: PaddlePaddle团队
+  url: https://www.paddlepaddle.org.cn
+
+volcano-team:
+  name: Volcano团队
+  url: https://volcano.sh
