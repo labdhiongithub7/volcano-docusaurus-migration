@@ -22,7 +22,7 @@ const config = {
 
   i18n: {
     defaultLocale: "en",
-    locales: ["en", "zh"],
+    locales: ["en"],
     localeConfigs: {
       en: {
         label: "English",
@@ -30,28 +30,23 @@ const config = {
         htmlLang: "en-US",
         calendar: "gregory",
       },
-      zh: {
-        label: "中文",
-        direction: "ltr",
-        htmlLang: "zh-CN",
-        calendar: "gregory",
-      },
     },
   },
   plugins: [
-  [
-    require.resolve("@easyops-cn/docusaurus-search-local"),
-    {
-      docsRouteBasePath: "/docs",
-      blogRouteBasePath: "/blog",
-      language: ["en", "zh"],
-      hashed: true,
-      highlightSearchTermsOnTargetPage: true,
-      explicitSearchResultPath: true,
-      indexPages: true,
-    },
+    require.resolve("./plugins/blog-list-data"),
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        docsRouteBasePath: "/docs",
+        blogRouteBasePath: "/blog",
+        language: ["en"],
+        hashed: true,
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        indexPages: true,
+      },
+    ],
   ],
-],
   presets: [
     [
       "classic",
