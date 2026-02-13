@@ -1,5 +1,6 @@
 ---
 title: "MPI on Volcano"
+sidebar_position: 4
 ---
 
 ### HPC introduction

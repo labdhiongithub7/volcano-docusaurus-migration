@@ -1,5 +1,6 @@
 ---
 title: "Recommended Configurations for Common Scenarios"
+sidebar_position: 4
 ---
 
 

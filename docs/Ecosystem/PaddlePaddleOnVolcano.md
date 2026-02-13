@@ -1,5 +1,6 @@
 ---
 title: "PaddlePaddle on Volcano"
+sidebar_position: 5
 ---
 
 

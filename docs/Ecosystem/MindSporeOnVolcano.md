@@ -1,5 +1,6 @@
 ---
 title: "MindSpore on Volcano"
+sidebar_position: 3
 ---
 
 

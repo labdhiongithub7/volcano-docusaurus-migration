@@ -1,5 +1,6 @@
 ---
 title: "Community Membership"
+sidebar_position: 2
 ---
 
 # Volcano Community Membership
