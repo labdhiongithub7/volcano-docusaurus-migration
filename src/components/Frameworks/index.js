@@ -1,5 +1,6 @@
 import React from 'react';
 import Container from '../Containers';
+import Translate from '@docusaurus/Translate';
 import './styles.css';
 
 const frameworks = [
@@ -81,17 +82,17 @@ export default function Frameworks() {
   return (
     <div className="frameworks-container">
       <Container className="frameworksSection">
-        <h1>Rich Framework Support</h1>
+        <h1><Translate>Rich Framework Support</Translate></h1>
         <p className="frameworks-subtitle">
-          Seamlessly integrate with mainstream computing frameworks for AI, big data, and scientific computing
+          <Translate>Seamlessly integrate with mainstream computing frameworks for AI, big data, and scientific computing</Translate>
         </p>
         <div className="frameworks-grid">
           {frameworks.map((framework, index) => (
-            <a 
-              key={index} 
-              href={framework.url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              key={index}
+              href={framework.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="framework-card-link"
             >
               <div className="framework-card">

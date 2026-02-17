@@ -1,5 +1,6 @@
 import React from 'react';
 import Container from '../Containers';
+import Translate from '@docusaurus/Translate';
 import './styles.css';
 
 const supporters = [
@@ -138,7 +139,7 @@ const supporters = [
   {
     imgSrc: "img/landing/logo_ktnexr.png",
     imgWidth: "100px",
-    imgHeight: "60px",  
+    imgHeight: "60px",
     url: "https://github.com/nexr/"
   },
   {
@@ -153,19 +154,19 @@ export default function Supporters() {
   return (
     <div className="supporters-section">
       <Container>
-        <h2 className="supporters-title">Supporters</h2>
+        <h2 className="supporters-title"><Translate>Supporters</Translate></h2>
         <div className="supporters-grid">
           {supporters.map((supporter, index) => (
-            <a 
-              key={index} 
-              href={supporter.url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              key={index}
+              href={supporter.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="supporter-link"
             >
-              <img 
-                src={supporter.imgSrc} 
-                alt="Supporter Logo" 
+              <img
+                src={supporter.imgSrc}
+                alt="Supporter Logo"
                 className="supporter-image"
               />
             </a>

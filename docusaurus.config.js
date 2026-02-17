@@ -22,12 +22,18 @@ const config = {
 
   i18n: {
     defaultLocale: "en",
-    locales: ["en"],
+    locales: ["en", "zh-Hans"],
     localeConfigs: {
       en: {
         label: "English",
         direction: "ltr",
         htmlLang: "en-US",
+        calendar: "gregory",
+      },
+      "zh-Hans": {
+        label: "中文",
+        direction: "ltr",
+        htmlLang: "zh-CN",
         calendar: "gregory",
       },
     },
@@ -39,7 +45,7 @@ const config = {
       {
         docsRouteBasePath: "/docs",
         blogRouteBasePath: "/blog",
-        language: ["en"],
+        language: ["en", "zh"],
         hashed: true,
         highlightSearchTermsOnTargetPage: true,
         explicitSearchResultPath: true,
@@ -64,7 +70,7 @@ const config = {
             },
           },
         },
-         blog: {
+        blog: {
           showReadingTime: true,
           blogSidebarCount: "ALL",
           feedOptions: {
@@ -107,7 +113,6 @@ const config = {
           dropdownActiveClassDisabled: false,
         },
         { to: "/blog", label: "Blog", position: "left" },
-      
 
         {
           href: "https://github.com/volcano-sh/",

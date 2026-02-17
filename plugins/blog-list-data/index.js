@@ -1,61 +1,14 @@
 const path = require("path");
 const fs = require("fs");
-
-function extractFrontMatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return {};
-  const fm = {};
-  const lines = match[1].split("\n");
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    const colon = line.indexOf(":");
-    if (colon > 0) {
-      const key = line.slice(0, colon).trim();
-      let value = line.slice(colon + 1).trim();
-   
-      if (value === "" && key === "authors" && i + 1 < lines.length) {
-        const next = lines[i + 1];
-        if (next.trim().startsWith("- ")) {
-          fm[key] = [next.trim().slice(2).trim()];
-          i++;
-        }
-      } else {
-        // Normalize outer quotes first (handles cases like authors: '["volcano"]')
-        const unq = value.replace(/^['"]|['"]$/g, "");
-
-        // Inline array like: authors: ["volcano"] or ['volcano'] or quoted JSON string
-        if (unq.startsWith('[') && unq.endsWith(']')) {
-          try {
-            const arr = JSON.parse(unq);
-            fm[key] = Array.isArray(arr) ? arr : [unq];
-          } catch (err) {
-            const items = unq
-              .slice(1, -1)
-              .split(",")
-              .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
-              .filter(Boolean);
-            fm[key] = items;
-          }
-        }
-        // Quoted string value or plain value
-        else if (unq) {
-          fm[key] = unq;
-        }
-      }
-    }
-    i++;
-  }
-  return fm;
-}
+const matter = require("gray-matter");
 
 module.exports = function (context, options) {
   const { siteDir, i18n } = context;
   const currentLocale = i18n?.currentLocale || "en";
-  // For zh locale, use localized blog path; otherwise use default blog/
+
   const blogPath =
-    currentLocale === "zh"
-      ? path.join(siteDir, "i18n", "zh", "docusaurus-plugin-content-blog")
+    currentLocale === "zh-Hans"
+      ? path.join(siteDir, "i18n", "zh-Hans", "docusaurus-plugin-content-blog")
       : path.join(siteDir, "blog");
 
   return {
@@ -66,7 +19,7 @@ module.exports = function (context, options) {
         actions.setGlobalData({ blogList: [] });
         return;
       }
-    
+
       const files = fs
         .readdirSync(blogPath, { withFileTypes: true })
         .filter((f) =>
@@ -77,7 +30,7 @@ module.exports = function (context, options) {
       for (const file of files) {
         const filePath = path.join(blogPath, file);
         const content = fs.readFileSync(filePath, "utf-8");
-        const fm = extractFrontMatter(content);
+        const { data: fm } = matter(content);
 
         let dateStr = fm.date || null;
         let timestamp = 0;
@@ -91,19 +44,33 @@ module.exports = function (context, options) {
         }
         if (!dateStr) {
           const stat = fs.statSync(filePath);
-          timestamp = stat.mtimeMs; // ms since epoch
+          timestamp = stat.mtimeMs;
           dateStr = new Date(timestamp).toISOString();
         }
 
         const slug = file.replace(/\.mdx?$/, '');
         const permalink =
-          currentLocale === "zh" ? `/zh/blog/${slug}` : `/blog/${slug}`;
-        
-        let authors = fm.authors ? (typeof fm.authors === "string" ? [fm.authors] : fm.authors) : [];
-        authors = authors
-          .map((a) => String(a).replace(/^[\[\\"']+|[\]\\\"']+$/g, "").trim())
-          .filter((a) => a.length > 0);
-        
+          currentLocale === "zh-Hans" ? `/zh-Hans/blog/${slug}` : `/blog/${slug}`;
+
+        let authors = fm.authors || [];
+        if (typeof authors === "string") {
+          if (authors.trim().startsWith("[") && authors.trim().endsWith("]")) {
+            try {
+              authors = JSON.parse(authors);
+            } catch (e) {
+              authors = [authors];
+            }
+          } else {
+            authors = [authors];
+          }
+        }
+
+        if (Array.isArray(authors)) {
+          authors = authors.map(a => String(a).replace(/^[\[\\"']+|[\]\\\"']+$/g, "").trim()).filter(a => a.length > 0);
+        } else {
+          authors = [];
+        }
+
         posts.push({
           id: slug,
           title: fm.title || "Untitled",
@@ -115,7 +82,7 @@ module.exports = function (context, options) {
         });
       }
 
-      // Sort posts by timestamp descending (latest first)
+
       posts.sort((a, b) => b.timestamp - a.timestamp);
 
       actions.setGlobalData({ blogList: posts });
