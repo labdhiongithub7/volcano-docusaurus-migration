@@ -1,50 +1,48 @@
 ---
-title: "Load-aware Descheduling"
+title: "负载感知重调度"
 ---
 
-## Overview
+## 背景
 
-The scheduling within a cluster is the process of assigning pending Pods to nodes for execution, with Pod scheduling relying on the cluster's scheduler. The scheduler calculates the optimal node for a Pod's execution through a series of algorithms. However, the Kubernetes cluster environment is dynamic, with changes such as a node requiring maintenance, which would result in all Pods on that node being evicted to other nodes, once maintenance is complete, the previously evicted Pods do not automatically return to the node, as once a Pod is bound to a node, it does not trigger a descheduling. Due to these changes, the cluster may become unbalanced over time.
+集群中的调度是将pending状态的Pod分配到节点运行的过程，Pod的调度依赖于集群中的调度器。调度器是通过一系列算法计算出Pod运行的最佳节点，但是Kubernetes集群环境是存在动态变化的，例如某一个节点需要维护，这个节点上的所有Pod会被驱逐到其他节点，但是当维护完成后，之前被驱逐的Pod并不会自动回到该节点上来，因为Pod一旦被绑定了节点是不会触发重新调度的。由于这些变化，集群在一段时间之后就可能会出现不均衡的状态。
 
-To address the above issues, `Volcano descheduler` can evict Pods that do not comply with the configured strategies, allowing them to be rescheduled and thereby achieving balanced cluster load and reducing resource fragmentation. See repo：[https://github.com/volcano-sh/descheduler](https://github.com/volcano-sh/descheduler).
+为了解决上述问题，Volcano的重调度器可以根据设置的策略，驱逐不符合配置策略的Pod，让其重新进行调度，达到均衡集群负载、减少资源碎片化的目的。项目地址：[https://github.com/volcano-sh/descheduler](https://github.com/volcano-sh/descheduler)。
 
-## Features
+## 功能
 
-Volcano decheduler's capability is based on https://github.com/kubernetes-sigs/descheduler.git, with the following new features:
+Volcano的重调度能力在 [https://github.com/kubernetes-sigs/descheduler.git](https://github.com/kubernetes-sigs/descheduler.git) 的基础上，新增了以下功能：
 
-### Descheduling via crontab or fixed interval
+### 支持按照crontab定时任务和固定时间间隔进行重调度
 
-Users can deploy the  `Volcano descheduler` as a Deploment type workload instead of a cronJob. Then specify the command line parameters to run the descheduler according to cronTab expression or fixed interval.
+用户可以把`Volcano descheduler`部署为一个Deploment类型的工作负载。然后在命令行参数指定按照cronTab定时运行或者固定时间间隔运行重调度组件，而无需把重调度组件部署成一个cronJob类型的工作负载。
 
-**cronTab scheduled task**: Specify the parameter `--descheduling-interval-cron-expression='0 0 * * *'`, which means to run descheduling once every morning.
+**cronTab定时任务**: 指定参数`--descheduling-interval-cron-expression='0 0 * * *'`，表示每天凌晨运行一次重调度。
 
-**Fixed interval**: Specify the parameter `--descheduling-interval=10m`, which means descheduling will be run every 10 minutes.
+**固定间隔**: 指定参数`--descheduling-interval=10m`，表示每10分钟运行一次重调度。
 
-And please notice that `--descheduling-interval` has a higher priority than `--descheduling-interval-cron-expression`, the descheduler's behavior is subject to the `--descheduling-interva` setting when both parameters are set.
+请注意，`--descheduling-interval`的优先级高于`--descheduling-interval-cron-expression`，当两个参数都设置时，descheduler 的行为以`--descheduling-interva`设置的为准。
 
-### Real Load Aware Descheduling
+### 支持基于真实负载感知的重调度LoadAware
 
-In the process of kubernetes cluster governance, hotspots are often formed due to high CPU, memory and other utilization conditions, which not only affects the stable operation of Pods on the current node, but also leads to a surge in the chances of node failure. In order to cope with problems such as load imbalance of cluster nodes and dynamically balance the resource utilization rate among nodes, it is necessary to construct a cluster resource view based on the relevant monitoring metrics of nodes, so that in the cluster governance phase, through real-time monitoring, it can automatically intervene to migrate some Pods on the nodes with high resource utilization rate to the nodes with low utilization rate, when high resource utilization rate, node failure, and high number of Pods are observed.
+在K8s集群治理过程中，常常会因CPU、内存等高使用率状况而形成热点，既影响了当前节点上Pod的稳定运行，也会导致节点发生故障的几率的激增。为了应对集群节负载不均衡等问题，动态平衡各个节点之间的资源使用率，需要基于节点的相关监控指标，构建集群资源视图，在集群治理阶段，通过实时监控，在观测到节点资源率较高、节点故障、Pod 数量较多等情况时，可以自动干预，迁移资源使用率高的节点上的一些Pod到利用率低的节点上。
 
-The native descheduler only supports load-aware scheduling based on Pod request, which evicts Pods on nodes with higher utilization rates, thus equalizing resource utilization among nodes and avoiding overheating of individual node. However, Pod request does not reflect the real resource utilization of the nodes, so Volcano implements descheduling based on the real load of the nodes, by querying the metrics exposed by nodes, more accurate descheduling is performed based on the real load of CPU and Memory.
+原生的descheduler只支持基于Pod request的负载感知调度，对利用率比较高的节点上的Pods进行驱逐，从而均衡节点间的资源利用率，避免个别节点过热。但是Pod request并不能反映节点的真实资源使用情况，因此Volcano实现了基于节点真实负载的重调度，通过查询节点暴露的指标，基于CPU、Memory的真实负载进行更加准确的重调度。
 
-<!--<div style="text-align: center;"> 
-  <img src="/img/descheduler/descheduler_EN.svg" alt="LoadAware Descheduling" />
-</div>-->
+![LoadAware原理图](/img/doc/descheduler-CN.svg)
 
-The principle of LoadAware is shown in the figure above:
+LoadAware原理如上图所示：
 
-- Normal nodes: nodes with resource utilization greater than or equal to 30% and less than or equal to 80%. The load level range of this node is a reasonable range expected to be reached.
-- Hotspot nodes: nodes with resource utilization higher than 80%. Hotspot nodes will evict some Pods and reduce the load level to no more than 80%. The descheduler will schedule the Pods on the hotspot nodes to the idle nodes.
-- Idle nodes: nodes with resource utilization lower than 30%.
+- 正常节点：资源利用率大于等于30%且小于等于80%的节点。此节点的负载水位区间是期望达到的合理区间范围。
+- 热点节点：资源利用率高于80%的节点。热点节点将驱逐一部分Pod，降低负载水位，使其不超过80%。重调度器会将热点节点上面的Pod调度到空闲节点上面。
+- 空闲节点：资源利用率低于30%的节点。
 
-## Quick start
+## 快速上手
 
-### Prepare
+### 准备
 
-Install [prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) or [prometheus-adaptor](https://github.com/prometheus-community/helm- c harts/tree/main/charts/prometheus-adapter), and [prometheus-node-exporter](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-node-exporter), The real load of the node is exposed to the `Volcano descheduler` through node-exporter and prometheus.
+安装[prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus)或者[prometheus-adaptor](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-adapter)和[prometheus-node-exporter](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-node-exporter), 节点的真实负载通过node-exporter和prometheus暴露给`Volcano descheduler`使用。
 
-Add the following automatic discovery and node label replacement rules for the node-exporter service in the `scrape_configs` configuration of prometheus. This step is very important, otherwise `Volcano descheduler` cannot get the real load metrics of the node. For more details about `scrape_configs`, please refer to [Configuration | Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config).
+在prometheus的`scrape_configs`配置中添加如下的node-exporter服务的自动发现和节点标签替换规则，这一步很重要，否则`Volcano descheduler`拿不到节点的真实负载指标。关于scrape_configs的更多细节请参考[Configuration | Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config)。
 
 ```yaml
 scrape_configs:
@@ -57,17 +55,17 @@ scrape_configs:
     target_label: instance
 ```
 
-### Install Volcano descheduler
+### 安装Volcano descheduler
 
-#### Install via yaml
+#### 通过yaml安装
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/volcano-sh/descheduler/main/installer/volcano-descheduler-development.yaml
+kubectl apply -f https://raw.githubusercontent.com/volcano-sh/descheduler/refs/heads/main/installer/volcano-descheduler-development.yaml
 ```
 
-### Configurations
+### 配置
 
-The default descheduling configuration is in the `volcano-descheduler` configMap under the `volcano-system` namespace. You can update the descheduling configuration by modifying the data in the configMap. The plugins enabled by default are `LoadAware` and `DefaultEvictor`, which perform load-aware descheduling and eviction respectively.
+默认的重调度配置在volcano-system命名空间下的volcano-descheduler configMap中，你可以通过修改该configMap里的数据来更新重调度的配置。或者在使用helm安装时增加参数`--set custom.deschedulerPolicy=$CUSTOM_CONFIG`来覆盖默认配置。默认打开的插件为`LoadAware`和`DefaultEvictor`，分别进行基于负载感知的重调度和驱逐。
 
 ```yaml
 apiVersion: "descheduler/v1alpha2"
@@ -89,11 +87,11 @@ profiles:
         address: null
         type: null
       targetThresholds:
-        cpu: 80 # Eviction will be triggered when the node CPU utilization exceeds 80%
-        memory: 85 # Eviction will be triggered when the node memory utilization exceeds 85%
+        cpu: 80 # 节点cpu利用率超过80%时会触发驱逐
+        memory: 85 # 节点memory利用率超过85%时会触发驱逐
       thresholds:
-        cpu: 30 # Pods can be scheduled to nodes whose CPU resource utilization is less than 30%
-        memory: 30 # Pods can be scheduled to nodes whose memory resource utilization is less than 30%.
+        cpu: 30 # Pods可以被调度到节点cpu资源利用低于30%的节点
+        memory: 30 # Pods可以被调度到节点memory资源利用低于30%的节点
     name: LoadAware
   plugins:
     balance:
@@ -101,30 +99,30 @@ profiles:
       - LoadAware
 ```
 
-For the full configuration and parameter description of the `DefaultEvictor` plugin, please refer to: https://github.com/kubernetes-sigs/descheduler/tree/master#evictor-plugin-configuration-default-evictor.
+`DefaultEvictor`插件的全量配置和参数说明请参考：https://github.com/kubernetes-sigs/descheduler/tree/master#evictor-plugin-configuration-default-evictor。
 
-`LoadAware` plugin parameter description:
+LoadAware插件参数说明：
 
-|        Name         |         type         | Default Value |                         Description                          |
-| :-----------------: | :------------------: | :-----------: | :----------------------------------------------------------: |
-|    nodeSelector     |        string        |      nil      |            Limiting the nodes which are processed            |
-| evictableNamespaces | map(string:[]string) |      nil      |       Exclude evicting pods under excluded namespaces        |
-|       nodeFit       |         bool         |     false     | Set to `true` the descheduler will consider whether or not the pods that meet eviction criteria will fit on other nodes before evicting them. |
-|    numberOfNodes    |         int          |       0       | This parameter can be configured to activate the strategy only when the number of under utilized nodes are above the configured value. This could be helpful in large clusters where a few nodes could go under utilized frequently or for a short period of time. |
-|      duration       |        string        |      2m       | The time range specified when querying the actual utilization metrics of nodes, only takes effect when `metrics.type` is configured as `prometheus`. |
-|       metrics       |  map(string:string)  |      nil      | **Required Field**<br/>Contains two parameters: <br/>type: The type of metrics source, only supports `prometheus` and `prometheus_adaptor`.<br/>address: The service address of `prometheus`. |
-|  targetThresholds   |   map(string:int)    |      nil      | **Required Field**<br/>Supported configuration keys are `cpu`, `memory`, and `pods`.<br/>When the node resource utilization (for `cpu` or `memory`) exceeds the setting threshold, it will trigger Pods eviction on the node, with the unit being %.<br/>When the number of Pods on the node exceeds the set threshold, it will trigger Pods eviction on the node, with the unit being number. |
-|     thresholds      |   map(string:int)    |      nil      | **Required Field**<br/>The evicted Pods should be scheduled to nodes with utilization below the `thresholds`.<br/>The threshold for the same resource type cannot exceed the threshold set in `targetThresholds`. |
+|      字段名称       |         类型         | 默认值 |                             说明                             |
+| :-----------------: | :------------------: | :----: | :----------------------------------------------------------: |
+|    nodeSelector     |        string        |  nil   |            只处理指定的节点，nil表示处理所有节点             |
+| evictableNamespaces | map(string:[]string) |  nil   |                 指定命名空间下Pods不会被驱逐                 |
+|       nodeFit       |         bool         | false  | 设置为`true`时，调度器将在驱逐符合驱逐标准的Pod之前，考虑这些Pod是否能在其他节点上运行。 |
+|    numberOfNodes    |         int          |   0    | 该参数可以配置为仅在未充分利用节点的数量超过配置值时激活策略。这对于节点可能频繁或短时间内未充分利用的大型集群来说，可能会有所帮助。 |
+|      duration       |        string        |   2m   | 查询节点实际利用率指标时指定的时间范围，只有当metrics.type配置为prometheus生效。 |
+|       metrics       |  map(string:string)  |  nil   | **必填字段**<br />包含两个参数: <br />type: 指标来源类型，仅支持`prometheus`和`prometheus_adaptor`<br />address: `prometheus`服务地址。 |
+|  targetThresholds   |   map(string:int)    |  nil   | **必填字段**<br />支持配置的key为cpu,memory,pods<br />当节点资源cpu或memory利用率超过设置的阈值时，会触发节点Pods驱逐，单位为%。<br />当节点Pod数量超过设置阈值时，会触发节点Pods驱逐，单位为个数。 |
+|     thresholds      |   map(string:int)    |  nil   | **必填字段**<br />被驱逐的Pods应该被调度到利用率低于thresholds的节点上。<br />同一种资源类型的阈值不能超过targetThresholds里设置的阈值。 |
 
-In addition to the above `LoadAware plugin` enhancements, `Volcano descheduler` also supports native descheduler functions and plugins. If you want to configure other native plugins, please refer to: [descheduler/docs/user-guide.md at master · kubernetes-sigs/descheduler (github.com)](https://github.com/kubernetes-sigs/descheduler/blob/master/docs/user-guide.md).
+除上述LoadAware插件增强功能外，`Volcano descheduler`也支持原生descheduler的功能和插件，如果要配置其他的原生插件，请参考：[descheduler/docs/user-guide.md at master · kubernetes-sigs/descheduler (github.com)](https://github.com/kubernetes-sigs/descheduler/blob/master/docs/user-guide.md)。
 
-## Best practices
+## 最佳实践
 
-When the Pods on the node with relatively high resource utilization are evicted, we expect that the new created Pods should avoid being scheduled to the node with relatively high resource utilization again. Therefore, the `Volcano scheduler` also needs to enable the  plugin `usage` based on real load awareness, for detailed description and configuration of `usage`, please refer to: [volcano usage plugin](https://github.com/volcano-sh/volcano/blob/master/docs/design/usage-based-scheduling.md).
+当资源利用率比较高的节点上的Pods被驱逐后，我们期望新建的Pods应该避免再次被调度到资源利用率比较高的节点，因此Volcano调度器也需要开启基于真实负载感知的调度插件`usage`，关于`usage`的详细说明和配置请参考: [volcano usage plugin](https://github.com/volcano-sh/volcano/blob/master/docs/design/usage-based-scheduling.md)。
 
-## Trouble shotting
+## 问题排查
 
-When the configuration parameter `metrics.type` of the LoadAware plugin is set to `prometheus`, `Volcano scheduler` queries the actual utilization of cpu and memory through the following `PromQL` statement. When the expected eviction behavior does not occur, you can query it manually through prometheus, check whether the node metrics are correctly exposed, and compare it with the log of `Volcano descheduler` to judge its actual behavior.
+当LoadAware插件的配置参数metrics.type设置为`prometheus`时，`Volcano scheduler`通过以下PromQL语句查询cpu和memory的实际利用率，当预期的驱驱逐行为没有发生时，你可以通过prometheus手询查询节点的实际利用率，排查节点指标是否正确暴露，并可以对比`Volcano descheduler`的日志来判它的实际行为。
 
 cpu:
 

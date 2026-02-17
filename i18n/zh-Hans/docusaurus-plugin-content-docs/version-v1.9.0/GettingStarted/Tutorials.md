@@ -1,15 +1,16 @@
 ---
-title: "Tutorials"
+title: "教程"
 ---
-This section provides guidance to help you quickly get started with Volcano, from deploying a basic Volcano Job/Deployment, to integrating with Volcano Queues
-## Prerequisites
-A Kubernetes cluster with Volcano components need to be installed successfully. If you haven't installed Volcano yet, please refer to [Installation](https://volcano.sh/en/docs/installation/).
+本节提供指导帮助您快速上手 Volcano，从部署基本的 Volcano Job/Deployment，到集成 Volcano 队列。
 
-## Quick Start: Deploy a Volcano Job
-This quick start guide will walk you through deploying a simple Volcano Job. By default, Volcano Jobs use the default queue if no specific queue is provided.
+## 前置条件
+已成功安装带有 Volcano 组件的 Kubernetes 集群。如果您尚未安装 Volcano，请参阅 [安装指南](/zh-Hans/docs/Installation/)。
 
-### Step 1: Create a Volcano Job
-Create a file named vcjob-quickstart.yaml with the following content:
+## 快速开始：部署 Volcano Job
+本快速开始指南将引导您部署一个简单的 Volcano Job。默认情况下，如果未提供特定队列，Volcano Jobs 将使用默认队列 (default queue)。
+
+### 步骤 1：创建 Volcano Job
+创建一个名为 vcjob-quickstart.yaml 的文件，内容如下：
 ```shell
 # vcjob-quickstart.yaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -19,17 +20,17 @@ metadata:
 spec:
   minAvailable: 3
   schedulerName: volcano
-  # If you omit the 'queue' field, the 'default' queue will be used.
+  # 如果省略 'queue' 字段，将使用 'default' 队列。
   # queue: default
   policies:
-    # If a pod fails (e.g., due to an application error), restart the entire job.
+    # 如果一个 pod 失败（例如，由于应用程序错误），则重启整个 job。
     - event: PodFailed
       action: RestartJob
   tasks:
     - replicas: 3
       name: completion-task
       policies:
-      # When this specific task completes successfully, mark the entire job as Complete.
+      # 当此特定任务成功完成时，将整个 job 标记为 Complete。
       - event: TaskCompleted
         action: CompleteJob
       template:
@@ -48,13 +49,13 @@ spec:
                   cpu: 1
           restartPolicy: Never
 ```
-This job creates three pods and schedules the pods together as a group. The pod template uses a simple busybox container and sleeps for 100 seconds. 
-If the pod is completed, the job will also convert to completed state. 
+此 job 创建三个 pod 并将它们作为一个组进行调度。Pod 模板使用简单的 busybox 容器并休眠 100 秒。
+如果 pod 完成，job 也将转换为完成状态。
 
-### Step 2: Monitor the Job and Pod Status
-You can observe the progress of your VolcanoJob and its associated Pod.
+### 步骤 2：监控 Job 和 Pod 状态
+您可以观察 VolcanoJob 不及其关联 Pod 的进度。
 
-First, check the VolcanoJob status. You should see output similar to this (the exact timestamps and UIDs will differ):
+首先，检查 VolcanoJob 状态。您应该看到类似于以下的输出（确切的时间戳和 UID 会有所不同）：
 ```shell
 # kubectl get vcjob quickstart-job -oyaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -119,12 +120,12 @@ status:
         Running: 3
 ```
 
-Next, check the status of the Pod created by the Volcano Job:
+接下来，检查由 Volcano Job 创建的 Pod 的状态：
 
 ```bash
 kubectl get pod -l volcano.sh/job-name=quickstart-job
 ```
-Initially, the pod will be in a Running state. After about 100 seconds, the busybox container will exit, and the pods' status will change to Completed.
+最初，pod 将处于 Running 状态。大约 100 秒后，busybox 容器将退出，pod 的状态将变为 Completed。
 ```
 NAME                               READY   STATUS      RESTARTS   AGE
 quickstart-job-completion-task-0   0/1     Completed   0          3m59s
@@ -132,8 +133,8 @@ quickstart-job-completion-task-1   0/1     Completed   0          3m59s
 quickstart-job-completion-task-2   0/1     Completed   0          3m59s
 ```
 
-Once the Pod completes, the `TaskCompleted` policy within the VolcanoJob will trigger the `CompleteJob` action. 
-This will transition the VolcanoJob's phase to Completed:
+一旦 Pod 完成，VolcanoJob 中的 `TaskCompleted` 策略将触发 `CompleteJob` 动作。
+这将使 VolcanoJob 的阶段转换为 Completed：
 ```yaml
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
@@ -153,12 +154,12 @@ status:
 
 ```
 
-## Deploy Standard Kubernetes Workloads (Deployment, StatefulSet, etc.)
-Volcano seamlessly integrates with standard Kubernetes workloads like Deployment, StatefulSet, and others, extending their scheduling capabilities. 
-This means you can leverage Volcano's advanced features, such as gang scheduling. With gang scheduling, you can specify a minimum number of pods that must be schedulable as a group before any pods from that workload are launched.
+## 部署标准 Kubernetes 工作负载 (Deployment, StatefulSet 等)
+Volcano 无缝集成标准 Kubernetes 工作负载，如 Deployment、StatefulSet 等，扩展了它们的调度能力。
+这意味着您可以利用 Volcano 的高级功能，例如 gang scheduling（Gang 调度）。使用 gang scheduling，您可以指定必须作为一个组进行调度的最小 pod 数量，然后才会启动该工作负载的任何 pod。
 
-### Step 1: Create a Deployment with group-min-member Annotation
-Let's create a Deployment that expects 3 replicas but requires at least 2 pods to be schedulable as a group by Volcano.
+### 步骤 1：创建带有 group-min-member 注解的 Deployment
+让我们创建一个 Deployment，它期望 3 个副本，但要求至少 2 个 pod 作为一个组被 Volcano 调度。
 ```yaml
 # deployment-with-minmember.yaml
 apiVersion: apps/v1
@@ -166,29 +167,29 @@ kind: Deployment
 metadata:
   name: my-app-deployment
   annotations:
-    # Crucial for gang scheduling: This annotation tells Volcano to treat this deployment as a gang,
-    # requiring at least 2 pods to be schedulable together before any are launched.
+    # Gang 调度的关键：此注解告诉 Volcano 将此 deployment 视为一个 gang，
+    # 在启动任何 pod 之前，要求至少 2 个 pod 可以一起调度。
     scheduling.volcano.sh/group-min-member: "2"
   labels:
     app: my-app
 spec:
-  replicas: 3 # We desire 3 replicas for our application
+  replicas: 3 # 我们希望应用程序有 3 个副本
   selector:
     matchLabels:
       app: my-app
   template:
     metadata:
       # annotations:
-      #   Optional: You can also specify a specific Volcano queue for the PodGroup created by this deployment.
+      #   可选：您还可以为此 deployment 创建的 PodGroup 指定特定的 Volcano 队列。
       #   scheduling.volcano.sh/queue-name: "my-deployment-queue"
       labels:
         app: my-app
     spec:
-      schedulerName: volcano # Crucial: ensures the Volcano scheduler is used for this deployment's pods
+      schedulerName: volcano # 关键：确保此 deployment 的 pod 使用 Volcano 调度器
       containers:
         - name: my-container
           image: busybox
-          command: ["sh", "-c", "echo 'Hello Volcano from Deployment'; sleep 3600"] # A long-running command for demonstration
+          command: ["sh", "-c", "echo 'Hello Volcano from Deployment'; sleep 3600"] # 用于演示的长时间运行命令
           resources:
             requests:
               cpu: 1
@@ -196,16 +197,16 @@ spec:
               cpu: 1
 ```
 
-### Step 2: Observe the Automatically Created PodGroup and Pods
+### 步骤 2：观察自动创建的 PodGroup 和 Pod
 
-When you apply a Deployment (or StatefulSet) with the `scheduling.volcano.sh/group-min-member` annotation, Volcano automatically creates a PodGroup resource. 
-This PodGroup is responsible for enforcing the gang scheduling constraints for the pods belonging to your workload.
+当您应用带有 `scheduling.volcano.sh/group-min-member` 注解的 Deployment (或 StatefulSet) 时，Volcano 会自动创建一个 PodGroup 资源。
+此 PodGroup 负责强制执行属于您的工作负载的 pod 的 gang 调度约束。
 
-Check the PodGroup status:
+检查 PodGroup 状态：
 ```bash
 kubectl get pg podgroup-[UID of Replicaset] -oyaml
 ```
-You should see output similar to this:
+您应该看到类似于以下的输出：
 ```yaml
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: PodGroup
@@ -240,14 +241,14 @@ status:
   phase: Running
   running: 3
 ```
-You will observe that Volcano's scheduler ensures that at least minMember (2 in this example) pods can be scheduled together before it allows any pods from this deployment to be launched. 
-If there aren't enough resources for these pods, these pods will keep pending.
+您将观察到 Volcano 的调度器确保至少 minMember (本例中为 2) 个 pod 可以一起调度，然后才允许启动此 deployment 的任何 pod。
+如果没有足够的资源供这些 pod 使用，这些 pod 将保持 pending 状态。
 
-## Deploy Workloads with Custom Queues
-### Step 1: Create a Custom Queue
-Let's create a queue named "development-queue" with a specific CPU capability. Jobs assigned to this queue will contend for resources defined by its capability.
+## 使用自定义队列部署工作负载
+### 步骤 1：创建自定义队列
+让我们创建一个名为 "development-queue" 的队列，具有特定的 CPU 能力。分配给此队列的作业将争夺其能力定义的资源。
 
-Create a file named queue.yaml:
+创建一个名为 queue.yaml 的文件：
 ```yaml
 # queue.yaml
 apiVersion: scheduling.volcano.sh/v1beta1
@@ -255,16 +256,16 @@ kind: Queue
 metadata:
   name: development-queue
 spec:
-  weight: 1 # Relative weight for scheduling priority among queues
-  reclaimable: false # If true, jobs in other queues can reclaim resources in this queue
+  weight: 1 # 队列之间调度优先级的相对权重
+  reclaimable: false # 如果为 true，其他队列中的作业可以回收此队列中的资源
   capability:
     cpu: 2
 ```
-Create the queue in your cluster:
+在您的集群中创建队列：
 ```bash
 kubectl create -f queue.yaml
 ```
-A new queue will be created and turn to Open state:
+一个新队列将被创建并转变为 Open 状态：
 ```yaml
 # kubectl get queue development-queue -oyaml
 apiVersion: scheduling.volcano.sh/v1beta1
@@ -286,10 +287,10 @@ status:
   state: Open
 ```
 
-### Step 2: Create a Volcano Job using the Custom Queue
-Now, let's create a VolcanoJob that explicitly uses our development-queue.
+### 步骤 2：使用自定义队列创建 Volcano Job
+现在，让我们创建一个明确使用我们的 development-queue 的 VolcanoJob。
 
-Create a file named vcjob-with-queue.yaml and apply it:
+创建一个名为 vcjob-with-queue.yaml 的文件并应用它：
 ```yaml
 # vcjob-with-queue.yaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -299,7 +300,7 @@ metadata:
 spec:
   minAvailable: 1
   schedulerName: volcano
-  queue: development-queue # Assign this job to our custom queue
+  queue: development-queue # 将此 job 分配给我们的自定义队列
   tasks:
     - replicas: 1
       name: custom-queue-task
@@ -322,12 +323,12 @@ spec:
                   cpu: 1
           restartPolicy: Never
 ```
-### Step 3: Check the Status of the Custom Queue
-You can monitor the status of your custom queue to see how many resources have been allocated
+### 步骤 3：检查自定义队列状态
+您可以监控自定义队列的状态，查看已分配了多少资源
 ```bash
 kubectl get queue development-queue -oyaml
 ```
-Expected output:
+预期输出：
 ```yaml
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
@@ -349,8 +350,3 @@ status:
   state: Open
 
 ```
-
-
-
-
-

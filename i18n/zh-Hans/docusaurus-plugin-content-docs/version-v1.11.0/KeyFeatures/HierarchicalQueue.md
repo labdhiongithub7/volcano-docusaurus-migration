@@ -1,19 +1,20 @@
 ---
-title: "Hierarchical Queue"
+title: "层级队列"
 ---
-## Background
-In multi-tenant scenarios, queues are a core mechanism for achieving fair scheduling, resource isolation, and task priority control. However, in the current version of Volcano, queues only support a flat structure and lack hierarchical concepts. In practical applications, different queues often belong to different departments, with hierarchical relationships between departments, leading to more refined requirements for resource allocation and preemption. To address this, Volcano latest version introduces the hierarchical queue feature, significantly enhancing queue capabilities. With this feature, users can achieve finer-grained resource quota management and preemption strategies based on hierarchical queues, building a more efficient unified scheduling platform.
 
-For users using YARN, this feature allows seamless migration of big data workloads to Kubernetes clusters using Volcano. YARN's Capacity Scheduler already supports hierarchical queues, enabling cross-level resource allocation and preemption. Volcano latest version adopts a similar hierarchical queue design, providing more flexible resource management and scheduling strategies.
+## 背景
+在多租户场景中，队列是实现公平调度、资源隔离和任务优先级控制的核心机制。然而，在 Volcano 的当前版本中，队列仅支持扁平结构，缺乏层级概念。在实际应用中，不同的队列往往属于不同的部门，部门之间存在层级关系，导致对资源分配和抢占有更精细的要求。为解决这一问题，Volcano 最新版本引入了层级队列功能，显著增强了队列能力。通过该功能，用户可以基于层级队列实现更细粒度的资源配额管理和抢占策略，构建更高效的统一调度平台。
 
-## Features Support
-- Supports configuring hierarchical relationships between queues.
-- Supports resource sharing and reclamation between tasks in cross-level queues.
-- Supports setting resource capability limits `capability` for each resource dimension, resource entitlements `deserved` (if the allocated resources of a queue exceed its `deserved` value, the queue's resources can be reclaimed), and reserved resources `guarantee` (resources reserved for the queue that cannot be shared with other queues).
+对于使用 YARN 的用户，此功能允许将大数据工作负载无缝迁移到使用 Volcano 的 Kubernetes 集群。YARN 的 Capacity Scheduler 已经支持层级队列，实现了跨层级资源分配和抢占。Volcano 最新版本采用了类似的层级队列设计，提供了更灵活的资源管理和调度策略。
 
-## User Guide
-### Scheduler Configuration
-In the new version, the hierarchical queue capability is built on the `capacity` plugin. The scheduler configuration needs to enable the `capacity` plugin, set `enableHierarchy` to `true`, and enable the `reclaim` action to support resource reclamation between queues. The scheduler configuration example is as follows:
+## 功能支持
+- 支持配置队列之间的层级关系。
+- 支持跨层级队列中任务之间的资源共享和回收。
+- 支持为每个资源维度设置资源能力限制 `capability`、资源应得量 `deserved`（如果队列的已分配资源超过其 `deserved` 值，则该队列的资源可以被回收）和预留资源 `guarantee`（为队列预留的资源，不能与其他队列共享）。
+
+## 用户指南
+### 调度器配置
+在新版本中，层级队列能力构建在 `capacity` 插件之上。调度器配置需要启用 `capacity` 插件，将 `enableHierarchy` 设置为 `true`，并启用 `reclaim` 动作以支持队列之间的资源回收。调度器配置示例如下：
 
 ```
 kind: ConfigMap
@@ -33,13 +34,13 @@ data:
       - name: drf
         enablePreemptable: false
       - name: predicates
-      - name: capacity # capacity plugin must be enabled
-        enableHierarchy: true # enable hierarchical queue
+      - name: capacity # 必须启用 capacity 插件
+        enableHierarchy: true # 启用层级队列
       - name: nodeorder
 ```
 
-### Building Hierarchical Queues
-A new `parent` field has been added to the Queue spec to specify the parent queue:
+### 构建层级队列
+Queue 规范中添加了一个新的 `parent` 字段来指定父队列：
 
 ```
 type QueueSpec struct {
@@ -51,12 +52,12 @@ type QueueSpec struct {
 }
 ```
 
-Volcano Scheduler will automatically create a root queue as the root of all queues upon startup. Users can build a hierarchical queue tree based on the root queue, such as the following tree structure:
+Volcano 调度器将在启动时自动创建一个 root 队列作为所有队列的根。用户可以基于 root 队列构建层级队列树，例如以下树结构：
 
 ![Figure 1: Hierarchical Queue Example](/img/doc/hierarchical-queue-example.png)
 
 ```
-# The parent of child-queue-a is the root queue
+# child-queue-a 的父队列是 root 队列
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
@@ -68,7 +69,7 @@ spec:
     cpu: 64
     memory: 128Gi
 ---
-# The parent of child-queue-b is the root queue
+# child-queue-b 的父队列是 root 队列
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
@@ -80,7 +81,7 @@ spec:
     cpu: 64
     memory: 128Gi
 ---
-# The parent of subchild-queue-a1 is child-queue-a
+# subchild-queue-a1 的父队列是 child-queue-a
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
@@ -88,12 +89,12 @@ metadata:
 spec:
   reclaimable: true
   parent: child-queue-a
-  # You can set deserved values as needed. If the allocated resources of the queue exceed the deserved value, tasks in the queue can be reclaimed.
+  # 您可以按需设置 deserved 值。如果队列的已分配资源超过 deserved 值，队列中的任务可以被回收。
   deserved: 
     cpu: 32
     memory: 64Gi
 ---
-# The parent of subchild-queue-a2 is child-queue-a
+# subchild-queue-a2 的父队列是 child-queue-a
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
@@ -101,12 +102,12 @@ metadata:
 spec:
   reclaimable: true
   parent: child-queue-a 
-  # You can set deserved values as needed. If the allocated resources of the queue exceed the deserved value, tasks in the queue can be reclaimed.
+  # 您可以按需设置 deserved 值。如果队列的已分配资源超过 deserved 值，队列中的任务可以被回收。
   deserved: 
     cpu: 32
     memory: 64Gi
 ---
-# Submit a sample vc-job to the leaf queue subchild-queue-a1
+# 提交一个示例 vc-job 到叶子队列 subchild-queue-a1
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -131,6 +132,6 @@ spec:
                   memory: 2Gi
 ```
 
-When cluster resources are insufficient for pod requirement, pod's resources can be reclaimed. For pods in different queues, they will first reclaim pods in sibling queues (if the allocated resources of the sibling queue exceed the `deserved` value). If the resources in sibling queues are still insufficient to meet the pod's requirements, the hierarchical structure of the queues (i.e., ancestor queues) will be traversed upward to find sufficient resources. For example, if job-a and job-c are submitted first and the cluster resources are insufficient for job-b, job-b will first reclaim job-a. If reclaiming job-a does not meet the resource requirements, job-c will then be considered for reclaiming.
+当集群资源不足以满足 Pod 需求时，可以回收 Pod 的资源。对于不同队列中的 Pod，它们将首先回收兄弟队列中的 Pod（如果兄弟队列的已分配资源超过 `deserved` 值）。如果兄弟队列中的资源仍然不足以满足 Pod 的需求，则会向上遍历队列的层级结构（即祖先队列）以寻找足够的资源。例如，如果 job-a 和 job-c 先提交，而集群资源不足以运行 job-b，则 job-b 将首先回收 job-a。如果回收 job-a 不能满足资源要求，则随后将考虑回收 job-c。
 
-Note that in the current version, users can only submit jobs to **leaf queues**. If tasks have already been submitted to a parent queue, child queues cannot be created under that queue. This ensures effective management of resources and tasks across different levels in the queue hierarchy. Additionally, the sum of the `deserved`/`guarantee` values of child queues cannot exceed the `deserved`/`guarantee` values configured for the parent queue. Each child queue's `capability` values cannot exceed the `capability` limits of the parent queue. If a queue does not specify the `capability` value for a certain resource dimension, it will inherit the `capability` from its parent queue. If the parent queue and all ancestor queues do not specify it, the value will finally inherit from the root queue. By default, the root queue's `capability` is set to the total available resources of that dimension in the cluster.
+请注意，在当前版本中，用户只能向 **叶子队列** 提交作业。如果任务已提交给父队列，则无法在该队列下创建子队列。这确保了对队列层级结构中不同级别的资源和任务进行有效管理。此外，子队列的 `deserved`/`guarantee` 值之和不能超过为父队列配置的 `deserved`/`guarantee` 值。每个子队列的 `capability` 值不能超过父队列的 `capability` 限制。如果队列未指定某个资源维度的 `capability` 值，它将继承其父队列的 `capability`。如果父队列和所有祖先队列都未指定，则该值最终将继承自 root 队列。默认情况下，root 队列的 `capability` 设置为集群中该维度的总可用资源。

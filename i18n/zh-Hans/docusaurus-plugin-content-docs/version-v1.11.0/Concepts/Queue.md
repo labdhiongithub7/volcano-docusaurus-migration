@@ -3,9 +3,10 @@ title: "Queue"
 sidebar_position: 1
 ---
 
-## Introduction
-Queue is a collection of PodGroups, which adopts FIFO. It is also used as the basis for resource division.
-## Example
+## 简介
+队列（Queue）是 PodGroup 的集合，采用先进先出（FIFO）原则。它也被用作资源划分的基础。
+
+## 示例
 ```shell
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
@@ -38,62 +39,62 @@ status:
   state: Open
 ```
 
-## Key Fields
-* guarantee, *optional*
+## 关键字段
+* guarantee, *可选*
 
-guarantee indicates the resources reserved for all PodGroups in this queue. Other queues cannot use these reserved resources.
+guarantee 表示为该队列中的所有 PodGroup 预留的资源。其他队列不能使用这些预留资源。
 
-> **Note**: If guarantee value needs to be configured, it must be less than or equal to the deserved value
+> **注意**: 如果需要配置 guarantee 值，它必须小于或等于 deserved 值
 
-* deserved, *optional*
+* deserved, *可选*
 
-deserved indicates the expected resource amount for all PodGroups in this queue. If the allocated resources of this queue exceed the configured deserved value, the allocated resources can be reclaimed by other queues.
+deserved 表示该队列中所有 PodGroup 的预期资源量。如果该队列的已分配资源超过配置的 deserved 值，则已分配资源可能会被其他队列回收。
 
-> **Note**:
+> **注意**:
 > 
-> 1. This field can only be configured when the capacity plugin is enabled, and must be less than or equal to the capability value. The proportion plugin uses weight to automatically calculate the queue's deserved value. For more information on using the capacity plugin, see: [capacity plugin user guide](https://github.com/volcano-sh/volcano/blob/5b817b1cdf3a5638ba38e934b44af051c9fb419e/docs/user-guide/how_to_use_capacity_plugin.md)
-> 2. If the allocated resources of a queue exceed its configured deserved value, the queue cannot reclaim resources from other queues
+> 1. 只有启用了 capacity 插件时才能配置此字段，且必须小于或等于 capability 值。proportion 插件使用 weight 自动计算队列的 deserved 值。有关使用 capacity 插件的更多信息，请参阅：[capacity 插件用户指南](https://github.com/volcano-sh/volcano/blob/5b817b1cdf3a5638ba38e934b44af051c9fb419e/docs/user-guide/how_to_use_capacity_plugin.md)
+> 2. 如果队列的已分配资源超过其配置的 deserved 值，则该队列无法从其他队列回收资源
 
-* weight, *optional*
+* weight, *可选*
 
-`weight` indicates the **relative** weight of a queue in cluster resource division. The deserved resource amount is calculated as **(weight/total-weight) * total-resource**. `total-weight` is the total weight of all queues. `total-resource` is the total number of cluster resources. `weight` is a soft constraint.
+`weight` 表示队列在集群资源划分中的 **相对** 权重。应得资源量计算为 **(weight/total-weight) * total-resource**。`total-weight` 是所有队列的总权重。`total-resource` 是集群资源的总数。`weight` 是一个软约束。
 
-> **Note**: 
+> **注意**: 
 > 
-> 1. This field can only be configured when the proportion plugin is enabled. If weight is not set, it defaults to 1. The capacity plugin does not need this field.
+> 1. 只有启用了 proportion 插件时才能配置此字段。如果未设置 weight，默认为 1。capacity 插件不需要此字段。
 > 
-> 2. This field is a soft constraint. The Deserved value is calculated based on weight. When other queues' resource usage is below their Deserved values, this queue can exceed its Deserved value by borrowing resources from other queues. However, when cluster resources become scarce and other queues need their borrowed resources for tasks, this queue must return the borrowed resources until its usage matches its Deserved value. This design ensures maximum utilization of cluster resources.
+> 2. 此字段是一个软约束。Deserved 值是基于 weight 计算的。当其他队列的资源使用量低于其 Deserved 值时，此队列可以通过借用其他队列的资源来超过其 Deserved 值。但是，当集群资源变得稀缺且其他队列需要其借出的资源用于任务时，此队列必须归还借用的资源，直到其使用量与其 Deserved 值相匹配。这种设计确保了集群资源的最大利用率。
 
-* capability, *optional*
+* capability, *可选*
 
-`capability` indicates the upper limit of resources the queue can use. It is a hard constraint.If this field is not set, the queue's capability will be set to realCapability (total cluster resources minus the total guarantee values of other queues).
+`capability` 表示队列可以使用的资源上限。它是一个硬约束。如果未设置此字段，则队列的 capability 将设置为 realCapability（集群总资源减去其他队列的总 guarantee 值）。
 
-* reclaimable, *optional*
+* reclaimable, *可选*
 
-`reclaimable` specifies whether to allow other queues to reclaim extra resources occupied by a queue when the queue uses more resources than allocated. The default value is `true`.
+`reclaimable` 指定当队列使用的资源超过分配值时，是否允许其他队列回收该队列占用的额外资源。默认值为 `true`。
 
-* priority, *optional*
+* priority, *可选*
 
-priority indicates the priority of this queue. During resource allocation and resource preemption/reclamation, higher priority queues will have precedence in allocation/preemption/reclamation.
+priority 表示此队列的优先级。在资源分配和资源抢占/回收期间，优先级较高的队列将优先进行分配/抢占/回收。
 
-* parent, *optional*
+* parent, *可选*
 
-This field is used to configure [hierarchical queues](/en/docs/hierarchical_queue). parent specifies the parent queue. If parent is not specified, the queue will be set as a child queue of the root queue by default.
+此字段用于配置[层级队列](/en/docs/hierarchical_queue)。parent 指定父队列。如果未指定 parent，默认情况下队列将被设置为 root 队列的子队列。
 
-## Status
+## 状态 (Status)
 ### Open
-`Open` indicates that the queue is available and can accept new PodGroups.
+`Open` 表示队列可用，可以接受新的 PodGroup。
 ### Closed
-`Closed` indicates that the queue is unavailable and cannot accept any new PodGroups.
+`Closed` 表示队列不可用，不能接受任何新的 PodGroup。
 ### Closing
-`Closing` indicates that the queue is becoming unavailable. It is a transient state. A `Closing` queue cannot accept any new PodGroups.
+`Closing` 表示队列正在变为不可用。这是一个瞬态。`Closing` 队列不能接受任何新的 PodGroup。
 ### Unknown
-`Unknown` indicates that the queue status is unknown because of unexpected situations such as network jitter.
+`Unknown` 表示由于网络抖动等意外情况，队列状态未知。
   
-## Note
-#### default Queue
-When Volcano starts, it automatically creates queue `default` whose `weight` is `1`. Subsequent jobs that are not assigned to a queue will be assigned to queue `default`.
-#### root queue
-When Volcano starts, it also creates a queue named root by default. This queue is used when the [hierarchical queue](/en/docs/hierarchical_queue) feature is enabled, serving as the root queue for all queues, with the default queue being a child queue of the root queue.
+## 注意
+#### 默认队列
+当 Volcano 启动时，它会自动创建名为 `default` 的队列，其 `weight` 为 `1`。后续未分配给队列的作业将被分配给 `default` 队列。
+#### root 队列
+当 Volcano 启动时，它还会默认创建一个名为 root 的队列。当启用[层级队列](/en/docs/hierarchical_queue)功能时，将使用此队列，作为所有队列的根队列，默认队列是 root 队列的子队列。
 
-> For more information on queue usage scenarios, please refer to [Queue Resource Management](/en/docs/queue_resource_management)
+> 有关队列使用场景的更多信息，请参阅[队列资源管理](/en/docs/queue_resource_management)

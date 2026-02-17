@@ -1,123 +1,117 @@
 ---
-title: "Community Membership"
+title: "社区成员"
 sidebar_position: 2
 ---
 
-# Volcano Community Membership
+## Volcano社区成员
 
-**Note:** We regularly update this document with the latest information and incorporate feedback from the Volcano community.
+**请注意：** 本文档根据Volcano社区反馈持续更新
 
-This document gives a brief overview of the Volcano community roles and the requirements and responsibilities associated with them.
+本文档将对Volcano社区成员各角色的要求和职责做简要说明
 
-| Role | Requirements | Responsibilities | Privileges |
+| 角色 | 要求 | 职责 | 权利 |
 | -----| ---------------- | ------------ | -------|
-| [Member](#member) | Sponsored by 2 approvers, active in the community, has contributed to Volcano | Gets new contributors on board| Member of the Volcano GitHub organization |
-| [Approver](#approver) | Sponsored by 2 maintainers, has extensive experience and knowledge of a particular domain, has actively contributed to code and review | Reviews and approves contributions from community members | Has write access to specific packages in relevant repositories |
-| [Maintainer](#maintainer) | Sponsored by 2 owners, has shown good technical judgment in feature design/development and PR review | Release planning and feature development/maintenance | Has top-level write access to relevant repositories; name entry in the Maintainers file of the repositories |
-| [Owner](#owner) | Sponsored by 3 owners, has proven ability to lead the entire Volcano project | Drives the overall technical roadmap of the project and sets priorities of activities in release planning | Has admin access to the Volcano GitHub organization |
+| [Member](#member) | 至少由2名approver通过, 在Volcano社区保持活跃并有所贡献 | 欢迎和指导新加入者 | Volcano社区组织成员 |
+| [Approver](#approver) | 至少由2名maintainers通过, 在某个领域具有较深的贡献和研究, 在Volcano社区编码和代码检视方面做出贡献  | 对社区贡献者提交的代码进行检视和合入 | 对相关仓库的指定包具有编辑权限 |
+| [Maintainer](#maintainer) | 至少由2名owners通过, 对特性设计、开发和代码检视具有良好的技术判断力 | 参与版本规划和特性开发、维护 | 对相关仓库具有定级编辑权限。昵称列入仓库Maintainers文件中 |
+| [Owner](#owner) | 至少由3名owners通过，主持Volcano项目的各方面工作 | 主持项目的宏观技术路标，为版本计划设置活动优先级 | Volcano社区组织管理员权限 |
+
+**请注意：** 全体Volcano成员均强制要求遵循[代码管理规范](https://github.com/volcano-sh/website/blob/master/CODE_OF_CONDUCT.md) 。
+
+### Member
+
+成员是社区中的积极参与者，他们通过编写PRs、审阅Issues/PRs或通过社区邮件列表/Slack/例会参与社区讨论。
 
 
-**Note:** All Volcano community members must follow the Volcano [Code of Conduct](https://github.com/volcano-sh/website/blob/master/CODE_OF_CONDUCT.md).
+#### 要求
 
-## Member
+- 至少由2名approvers通过
+- Github账户通过双因子认证
+- 社区贡献活跃. 贡献包括但不限于:
+    - 提交PRs
+    - 审阅由其他社区成员提出的 issues/PRs
+    - 通过slack、邮件列表参与社区讨论
+    - 参与社区例会
 
-Members are active participants in the community. They contribute by authoring PRs,
-reviewing issues/PRs or participating in community discussions on slack/mailing list.
+#### 职责和权利
 
-
-### Requirements
-
-- Sponsored by 2 approvers
-- Has enabled two-factor authentication for GitHub account
-- Actively contributed to the community. Contributions include but are not limited to:
-    - Authoring PRs
-    - Reviewing issues/PRs authored by other community members
-    - Participating in community discussions on slack/mailing list
-    - Attending Volcano community meetings
-
-
-### Responsibilities and privileges
-
-- Becomes a member of the Volcano GitHub organization
-- Can be assigned issues and PRs and can work on review requests from community members
-- Assigns issues and PRs
-- Gets new contributors on board
-- Guides new contributors on maintaining docs/files
-- Helps/Motivates new members in contributing to Volcano
+- Volcano Github组织成员
+- 能够被分配issues和PRs，其他社区成员也能够申请由他们进行内容检视
+- 参与分配Issues和PRs
+- 欢迎新的贡献者
+- 指导新的贡献者进行相关文档和文件的更新
+- 发展新的Volcano社区贡献者
 
 
-## Approver
+### Approver
 
-Approvers are active members who have extensive experience and knowledge of a particular domain.
-They have actively participated in the issue/PR reviews and have identified noteworthy issues during the reviews.
-
-
-### Requirements
-
-- Sponsored by 2 maintainers
-- Has been a member for at least 2 months
-- Has reviewed a large number of PRs
-- Has good codebase knowledge
+Approvers是指在某个领域具有较好的基础或较深入研究的活跃的Member。
+他们持续的参与issue/PR的检视工作，并能在检视过程中进行问题界定和意见指导。
 
 
-### Responsibilities and privileges
+#### 要求
 
-- Reviews code to maintain/improve code quality
-- Acknowledges and works on review requests from community members
-- Approves code contributions for acceptance related to a particular domain
-- Has write access to specific packages inside a repository, enforced via bot
-- Continues to contribute and guide other community members to contribute to Volcano
-
-## Maintainer
-
-Maintainers are approvers who have shown good technical judgment in feature design/development.
-They can grasp the big picture of the project and features in the project.
-
-### Requirements
-
-- Sponsored by 2 owners
-- Has been an approver for at least 2 months
-- Is nominated by a project owner
-- Has good technical judgment in feature design/development
-
-### Responsibilities and privileges
-
-- Participates in release planning
-- Maintains project code quality
-- Ensures the forward/backword compatibility of APIs based on feature graduation criteria
-- Analyzes and proposes new features/enhancements in the Volcano project
-- Demonstrates sound technical judgment
-- Mentors contributors and approvers
-- Has top-level write access to relevant repositories (including the permission to click the Merge PR button when manual check-in is necessary)
-- Name entry in the Maintainers file of the repositories
-- Participates & drives design/development of multiple features
-
-## Owner
-
-Owners are maintainers who have helped lead the project.
-They have deep understanding of Volcano and the related domains, and have facilitated major decision making in issues such as release planning.
-
-### Requirements
-
-- Sponsored by 3 owners
-- Has been a maintainer for at least 2 months
-- Is nominated by a project owner
-- Is not opposed by any project owner
-- Has helped lead the entire project
-
-### Responsibilities and privileges
-
-- Makes overall technical decisions of the project
-- Makes the overall technical roadmap of the project
-- Sets priorities for release planning
-- Guides and mentors all other community members
-- Ensures all community members follow the Code of Conduct
-- Makes sure all PRs are properly reviewed and merged, despite the admin access to all repositories
-- May obtain admin access to relevant repositories as required
-- Participates & drives design/development of multiple features
+- 至少由2名maintainers通过
+- 至少具有2个月的Member角色工作经历
+- 检视了一定数量的PRs
+- 具有良好的代码功底
 
 
-**Note:** These roles are applicable only to the Volcano Github organization and repositories. We are currently developing a formal process for review and acceptance into these roles.
+#### 职责和权利
+
+- 检视代码，保证和维护社区代码质量
+- 确认并处理社区成员的审查请求
+- 检视和批准某个领域的相关代码合入
+- 对仓库中的指定包具有编辑权限，通过机器人强制执行
+- 持续为社区代码做出贡献，指导其他社区成员为社区做出贡献
+
+### Maintainer
+
+Maintainer是指在特性设计、开发方便展现出良好技术判断力的approver。他们对项目和特性具有较为宏观的把控能力。
+Maintainers are approvers who have shown good technical judgement in feature design/development in the past.
+Has overall knowledge of the project and features in the project.
+
+#### 要求
+
+- 至少2名owners通过
+- 至少具有2个月Approver的工作经历
+- 由1名项目owner指定
+- 在特性设计、开发方面具有良好的技术判断力
+
+#### 职责和权利
+
+- 参与社区版本规划
+- 管控项目代码质量
+- 确保API与基于功能分级标准的向前/向后版本兼容
+- 展现出良好的技术判断力
+- 分析和提出项目新的特性和优化点
+- 指导社区贡献者和approver
+- 对相关仓库具有顶级编辑权限（有需要时可以手动合入PR）
+- 昵称列入仓库的Maintainers文件
+- 参与和驱动多个特性的设计和开发
+
+### Owner
+
+Owners是指协助管控项目宏观方向的maintainer。他们需要对Volcano和相关领域有深入了解，有助于在发布计划等重大方面达成一致。
+
+#### 要求
+
+- 至少由3名owner通过
+- 具有至少2个月Maintainer工作经历
+- 由1名项目owner指定
+- 不能被任何项目owner反对
+- 在把控项目宏观发展方面做出贡献
+
+#### 职责和权利
+
+- 在项目的宏观方面做出决策
+- 制定项目的宏观发展路标
+- 为版本计划设置活动优先级
+- 指导其他社区成员
+- 确保所有社区成员遵循代码管理规范
+- 虽然被给与了所有仓库的管理员权限，仍需要确保所有的PR被正确的检视和合入
+- 根据需要获取其他相关仓库的管理员权限
+- 参与和推动多个特性的设计和开发
 
 
-[two-factor authentication]: https://help.github.com/articles/about-two-factor-authentication
+**请注意** 这些角色仅适用于Volcano github组织和仓库。当前Volcano还没有正式的角色检视和接收流程。我们将尽快制定该流程.

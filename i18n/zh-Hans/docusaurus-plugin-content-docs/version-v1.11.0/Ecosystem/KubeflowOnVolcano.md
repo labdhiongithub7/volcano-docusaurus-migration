@@ -3,34 +3,30 @@ title: "Kubeflow on Volcano"
 sidebar_position: 2
 ---
 
+### Kubeflow简介
+
+Kubernetes已经成为云原生应用编排、管理的事实标准， 越来越多的应用选择向Kubernetes迁移。人工智能和机器学习领域天然的包含大量的计算密集型任务，开发者非常愿意基于Kubernetes构建AI平台，充分利用Kubernetes提供的资源管理、应用编排、运维监控能力。然而基于Kubernetes构建一个端到端的AI计算平台是非常复杂和繁琐的过程，它需要处理很多个环节。除了我们熟知的模型训练环节之外还包括数据收集、预处理、资源管理、特性提取、数据验证、模型的管理、模型发布、监控等环节。对于一个AI算法工程师来讲，他要做模型训练，就不得不搭建一套AI计算平台，这个过程耗时费力，而且需要很多的知识积累[1]。
+
+![模型训练工作流](/img/doc/kubeflow1.png)
+
+Kubeflow诞生于2017年，Kubeflow项目是基于容器和Kubernetes构建，旨在为数据科学家、机器学习工程师、系统运维人员提供面向机器学习业务的敏捷部署、开发、训练、发布和管理平台。它利用了云原生技术的优势，让用户更快速、方便的部署、使用和管理当前最流行的机器学习软件。
+
+什么场景我们可以使用kubeflow：
+
+- 希望训练tensorflow模型且可以使用模型接口发布应用服务在k8s环境中(eg.local,prem,cloud)
+- 希望使用Jupyter notebooks来调试代码，多用户的notebook server
+- 在训练的Job中，需要对的CPU或者GPU资源进行调度编排
+- 希望Tensorflow和其他组件进行组合来发布服务
 
 
 
+### Kubeflow on volcano
 
-### Kubeflow introduction
+Volcano是一款构建于Kubernetes之上的增强型高性能计算任务批量处理系统。作为一个面向高性能计算场景的平台，它弥补了kubernetes在机器学习、深度学习、HPC、大数据计算等场景下的基本能力缺失，其中包括gang-schedule的调度能力、计算任务队列管理、task-topology和GPU亲和性调度。另外，Volcano在原生kubernetes能力基础上对计算任务的批量创建及生命周期管理、fair-share、binpack调度等方面做了增强。Volcano充分解决了上文提到的Kubeflow分布式训练面临的问题。
 
-Kubernetes has become the de facto standard for cloud native application choreography and management, and more and more applications are migrating to Kubernetes. The field of artificial intelligence and machine learning naturally contains a large number of computation-intensive tasks. Developers are very willing to build an AI platform based on Kubernetes and make full use of the resource management, application scheduling, operation and maintenance monitoring capabilities provided by Kubernetes. However, it is a very complicated and tedious process to build an end-to-end AI computing platform based on Kubernetes, which needs to deal with many links. In addition to the model training we are familiar with, it also includes data collection, preprocessing, resource management, feature extraction, data verification, model management, model release, monitoring and other links. For an AI algorithm engineer, if he wants to do model training, he has to build a set of AI computing platform. This process is time-consuming and laborious, and requires a lot of knowledge accumulation[1].
+#### 下载kfctl
 
-![Model training workflow](/img/doc/kubeflow1.png)
-
-Kubeflow was born in 2017. The Kubeflow project is built based on containers and Kubernetes, aiming to provide data scientists, machine learning engineers, system operation and maintenance personnel with an agile platform for machine learning business deployment, development, training, release and management. It takes advantage of cloud native technology to make it faster and easier for users to deploy, use and manage the most popular machine learning software.
-
-What scenarios can we use Kubeflow for：
-
-- You want to train the TensorFlow model and you can use the model interface to publish application services in the K8S environment.
-- You want to debug your code using Jupyter Notebooks, a multi-user Notebook Server.
-- In the training Job, the CPU or GPU resources need to be scheduled and choreographed.
-- You want TensorFlow to be combined with other components to publish services.
-
-
-
-### Kubeflow on Volcano
-
-Volcano is an enhanced high performance computing task batch processing system built on Kubernetes. As a platform for high performance computing scenarios, it makes up for Kubernetes' lack of basic capabilities in machine learning, deep learning, HPC, and big data computing scenarios, including gang-schedule scheduling capability, computational task queue management, task-topology, and GPU affinity scheduling. In addition, Volcano has enhanced the batch creation and life cycle management of computing tasks, fair-share, binpack scheduling and other aspects on the basis of the native Kubernetes capability. Volcano has fully solved the problem of distributed training in Kubeflow mentioned above.
-
-#### download kfctl
-
-First of all, you need to download kfctl, you can choose the appropriate compressed package file according to the system [1].
+首先需要下载kfctl，可以根据系统来选择合适的压缩包文件[1]。
 
 ```
 $ tar -xvf kfctl_v1.0.2-0-ga476281_linux.tar.gz
@@ -39,7 +35,7 @@ $ sudo mv ./kfctl /usr/local/bin/kfctl
 
 
 
-#### Configure environment variables
+#### 配置环境变量
 
 ```
 $ export PATH= $PATH:"<path-to-kfctl>"
@@ -51,7 +47,7 @@ $ export CONFIG_URI="https://raw.githubusercontent.com/kubeflow/manifests/v1.0-b
 
 
 
-#### Install Kubeflow
+#### 安装kubeflow
 
 ```
 $ mkdir -p ${KF_DIR}
@@ -59,7 +55,7 @@ $ cd ${KF_DIR}
 $ Kfctl apply -V -f ${CONFIG_URI}
 ```
 
-Confirm the installation results with the following instructions.
+通过如下指令确认安装结果
 
 ```
 $ kubectl -n kubeflow get all 
@@ -67,9 +63,9 @@ $ kubectl -n kubeflow get all
 
 
 
-#### deploy Mnist 
+#### 部署Mnist示例
 
-Download the official test set provided by Kubeflow.
+首先下载kubuflow官方提供的测试集。
 
 ```
 git clone https://github.com/kubeflow/examples.git
@@ -77,9 +73,16 @@ git clone https://github.com/kubeflow/examples.git
 
 
 
-#### Start using Notebook
+```
+pip3 install jupyter notebook
+jupyter notebook --allow-root ##启动jupyter
+```
 
-External interface service is provided, where the nodes under the cluster need to be bound to public network IP. If Notebook is not installed, please use pip3 to install it first.
+
+
+#### 启动使用notebook
+
+提供对外接口服务，这里需要将集群下的节点绑定公网IP。如果没有安装notebook请先使用pip3安装。
 
 ```
 $ pip3 install jupyter notebook
@@ -91,15 +94,15 @@ $ jupyter notebook --allow-root
 [I 09:08:03.575 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
 ```
 
-Access your-IP：30200/,Enter the configuration password to enter the Notebook.
+访问公网IP:30200，输入配置密码即可进入notebook。
 
 
 
-#### Run the official instance on the Notebook[2]
+#### 在notebook上运行官方实例[2]
 
-1.Open Notebook and deploy TFJob。Open the notebook `mnist/mnist_vanilla_k8s.ipynb` ,Follow the guidelines to deploy a distributed TF Job.
+1.打开notebook进行TFJob的部署。Open the notebook `mnist/mnist_vanilla_k8s.ipynb` ，根据指引来进行分布式Tf Job的部署。
 
-2.Add a schedulerName: add `schedulerName: volcano` in mnist.yaml,Be sure to use volcano for scheduling.
+2.添加调度器字段：在`mnist/mnist_vanilla_k8s.ipynb` 的Tarining job parameters代码块下的TFJob的配置如下所示，添加`schedulerName: volcano`字段，确保使用volcano进行调度。
 
 ```
 train_spec = f"""apiVersion: kubeflow.org/v1
@@ -226,7 +229,7 @@ spec:
 """
 ```
 
-3.submit a job
+3.提交作业
 
 ```
 kubectl apply -f mnist.yaml

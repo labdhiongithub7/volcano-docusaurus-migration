@@ -1,33 +1,33 @@
 ---
-title: "Installation"
+title: "安装"
 ---
 
-The easiest way to get started with Volcano is to download the [release](https://github.com/volcano-sh/volcano/releases) package from GitHub and follow the following steps:
+开始使用 Volcano 最简单的方法是从 GitHub 下载 [release](https://github.com/volcano-sh/volcano/releases) 包并按照以下步骤操作：
 
-## Prerequisites
+## 前置条件
 
- - Kubernetes 1.12+ with CRD support.
+ - Kubernetes 1.12+ 并支持 CRD。
 
-## Installation Modes
- - Install with YAML files
- - Install from code
- - Install with Helm
+## 安装方式
+ - 使用 YAML 文件安装
+ - 源码安装
+ - 使用 Helm 安装
 
 
-### Install with YAML files
+### 使用 YAML 文件安装
 
-Install Volcano on an existing Kubernetes cluster. This way is both available for x86_64 and arm64 architecture.
+在现有的 Kubernetes 集群上安装 Volcano。这种方式同时支持 x86_64 和 arm64 架构。
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-development.yaml
 ```
 
-You can also replace `master` of above url with specific tag/branch (such as `release-1.10` branch for latest v1.10.x version, `v1.10.0` tag for v1.10.0 version) to install Volcano with specific version.
+您也可以将上述 url 中的 `master` 替换为特定的 tag/branch（例如 `release-1.10` 分支对应最新的 v1.10.x 版本，`v1.10.0` tag 对应 v1.10.0 版本）来安装特定版本的 Volcano。
 
 
-### Install from code
+### 源码安装
 
-If you don't have a Kubernetes cluster, try one-click install from code base.This way is only available for x86_64 temporarily.
+如果您没有 Kubernetes 集群，可以尝试从代码库一键安装。这种方式暂时仅支持 x86_64。
 
 ```
 git clone https://github.com/volcano-sh/volcano.git
@@ -38,11 +38,11 @@ cd volcano
 ```
 
 
-### Install with Helm
+### 使用 Helm 安装
 
-This document guides how to install the latest version of volcano.
+本文档指导如何安装最新版本的 Volcano。
 
-Use Helm charts to install Volcano with the following command.
+使用 Helm charts 通过以下命令安装 Volcano。
 
 ```shell
 helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
@@ -52,7 +52,7 @@ helm repo update
 helm install volcano volcano-sh/volcano -n volcano-system --create-namespace
 ```
 
-The output is as follows after executing the above command.
+执行上述命令后的输出如下：
 ```
 NAME: volcano
 LAST DEPLOYED: Tue Sep 29 10:18:44 2024
@@ -70,7 +70,7 @@ https://volcano.sh/
 ```
 
 
-## Verify status of Volcano components.
+## 验证 Volcano 组件状态
 
 ```shell
 # kubectl get all -n volcano-system
@@ -102,4 +102,4 @@ job.batch/volcano-admission-init   1/1           28s        6m10s
 
 ```
 
-After the configuration is complete, you can use Volcano to deploy the AI/ML and big data workloads.
+配置完成后，您可以使用 Volcano 部署 AI/ML 和大数据工作负载。

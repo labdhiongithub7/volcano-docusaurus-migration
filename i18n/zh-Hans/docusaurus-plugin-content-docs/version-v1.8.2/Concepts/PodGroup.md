@@ -4,9 +4,10 @@ title: PodGroup
 sidebar_position: 2
 ---
 
-## Introduction
-PodGroup is a group of pods with strong association and is mainly used in batch scheduling, for example, ps and worker tasks in TensorFlow. PodGroup is of a Custom Resource Definition (CRD) type.
-## Example
+## 简介
+PodGroup 是一组具有强关联性的 Pod 集合，主要用于批量调度，例如 TensorFlow 中的 ps 和 worker 任务。PodGroup 是一种自定义资源定义 (CRD) 类型。
+
+## 示例
 ```shell
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: PodGroup
@@ -49,44 +50,44 @@ status:
   running: 1
 
 ```
-## Key Fields
+## 关键字段
 ### minMember
-`minMember` indicates the minimum number of pods or tasks running under the PodGroup. If the cluster resource cannot meet the demand of running the minimum number of pods or tasks, no pod or task in the PodGroup will be scheduled. 
+`minMember` 表示 PodGroup 下运行的最小 Pod 或任务数量。如果集群资源无法满足运行最小数量 Pod 或任务的需求，则不会调度 PodGroup 中的任何 Pod 或任务。
 ### queue
-`queue` indicates the queue to which the PodGroup belongs. The queue must be in the Open state.
+`queue` 表示 PodGroup 所属的队列。队列必须处于 Open 状态。
 ### priorityClassName
-`priorityClassName` represents the priority of the PodGroup and is used by the scheduler to sort all the PodGroups in the queue during scheduling. Note that **system-node-critical** and **system-cluster-critical** are reserved values, which mean the highest priority. If `priorityClassName` is not specified, the default priority is used.
+`priorityClassName` 表示 PodGroup 的优先级，调度器在调度期间使用它来对队列中的所有 PodGroup 进行排序。注意，**system-node-critical** 和 **system-cluster-critical** 是保留值，表示最高优先级。如果未指定 `priorityClassName`，则使用默认优先级。
 ### minResources
-`minResources` indicates the minimum resources for running the PodGroup. If available resources in the cluster cannot satisfy the requirement, no pod or task in the PodGroup will be scheduled. 
+`minResources` 表示运行 PodGroup 所需的最小资源。如果集群中的可用资源无法满足要求，则也不会调度 PodGroup 中的任何 Pod 或任务。
 ### phase
-`phase` indicates the current status of the PodGroup.
+`phase` 表示 PodGroup 的当前状态。
 ### conditions
-`conditions` represents the status log of the PodGroup, including the key events that occurred in the lifecycle of the PodGroup.  
+`conditions` 表示 PodGroup 的状态日志，包括 PodGroup 生命周期中发生的关键事件。  
 ### running
-`running` indicates the number of running pods or tasks in the PodGroup.
+`running` 表示 PodGroup 中正在运行的 Pod 或任务的数量。
 ### succeed
-`succeed` indicates the number of successful pods or tasks in the PodGroup.
+`succeed` 表示 PodGroup 中成功的 Pod 或任务的数量。
 ### failed
-`failed` indicates the number of failed pods or tasks in the PodGroup.
-## Status
+`failed` 表示 PodGroup 中失败的 Pod 或任务的数量。
+## 状态 (Status)
 ![status-DAG](/img/doc/status-DAG.png)
 
 ### pending
 
-`pending` indicates that the PodGroup has been accepted by Volcano but its resource requirement has not been satisfied yet. Once satisfied, the status will turn to running.
+`pending` 表示 PodGroup 已被 Volcano 接受，但其资源需求尚未满足。一旦满足，状态将变为 running。
 ### running
-`running` indicates that there are at least **minMember** pods or tasks running under the PodGroup.
+`running` 表示 PodGroup 下至少有 **minMember** 个 Pod 或任务正在运行。
 ### unknown
-`unknown` indicates that among **minMember** pods or tasks, some are running while others are not scheduled. The reason could be due to the lack of resources. The scheduler will wait until ControllerManager starts these pods or tasks again.
+`unknown` 表示在 **minMember** 个 Pod 或任务中，有些正在运行，而有些尚未调度。原因可能是资源不足。调度器将等待 ControllerManager 再次启动这些 Pod 或任务。
 ### inqueue
-`inqueue` indicates that the PodGroup has passed validation and is waiting to be bound to a node. It is a transient state between pending and running.
-## Usage
+`inqueue` 表示 PodGroup 已通过校验，正在等待绑定到节点。它是 pending 和 running 之间的一个瞬态。
+## 用法
 ### minMember
-In some scenarios such as machine learning training, you do not need all tasks of a job to be completed. Instead, when a specified number of tasks are completed, the job can be achieved. In this case, the `minMember` field is suitable.
+在机器学习训练等某些场景中，您不需要作业的所有任务都完成。相反，当指定数量的任务完成时，作业即可完成。在这种情况下，`minMember` 字段非常适用。
 ### priorityClassName
-`priorityClassName` is used in preemptive priority scheduling.
+`priorityClassName` 用于抢占式优先级调度。
 ### minResources 
-In some scenarios such as big data analytics, a job can run only when available resources meet the minimum requirement. `minResources` is suitable for such scenarios.
-## Note
-#### Automatic Creation
-If no PodGroup is specified when a VolcanoJob is created, Volcano will create a PodGroup with the same name as the VolcanoJob.  
+在大数据分析等某些场景中，只有当可用资源满足最小要求时，作业才能运行。`minResources` 适用于此类场景。
+## 注意
+#### 自动创建
+如果创建 VolcanoJob 时未指定 PodGroup，Volcano 将创建一个与 VolcanoJob 同名的 PodGroup。  

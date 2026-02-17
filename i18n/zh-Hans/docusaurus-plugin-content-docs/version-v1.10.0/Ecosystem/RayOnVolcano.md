@@ -2,77 +2,74 @@
 title: "Ray on Volcano"
 sidebar_position: 8
 ---
+### Ray简介
+
+[Ray](https://docs.ray.io/en/latest/ray-overview/getting-started.html) 是一个专为AI/ML应用设计的统一分布式计算框架。Ray提供以下核心能力：
+
+- **分布式训练**：将机器学习工作负载从单机扩展到数千个节点
+- **超参数调优**：通过Ray Tune运行并行实验，实现高效的模型优化
+- **分布式数据处理**：使用Ray Data处理大规模数据集，支持批量推理和数据预处理
+- **强化学习**：通过Ray RLlib大规模训练强化学习模型
+- **模型服务**：使用Ray Serve在生产环境中部署和扩展机器学习模型
+- **通用分布式计算**：使用Ray Core API构建任意分布式应用
+
+### 在Volcano上运行Ray
+
+当前有两种方式可以在Volcano上部署Ray集群：
+
+1. **KubeRay Operator方式**：通过集成Volcano调度器的KubeRay Operator实现`RayCluster`, `RayService`和`RayJob`资源的自动化部署和管理
+2. **Volcano Job (vcjob) 方式**：通过Volcano Job配合Ray插件直接部署Ray集群
+
+以上两种方式都可以充分利用Volcano强大的调度能力，包括gang调度和网络拓扑感知调度，以实现最优的资源分配。
+
+### 方法一：使用KubeRay Operator
+
+[KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/index.html) 是一个开源的Kubernetes Operator，可以简化在Kubernetes上运行Ray的流程。它通过Kubernetes原生的工具和API实现Ray集群的自动化部署、扩缩容和管理。
+
+#### KubeRay与Volcano集成
+
+从KubeRay v1.5.1版本开始，所有KubeRay资源（RayJob、RayCluster和RayService）均支持Volcano的高级调度特性，包括gang调度和网络拓扑感知调度。该集成能够优化资源分配并提升分布式AI/ML工作负载的性能。
+
+#### 支持的标签
+
+在RayJob和RayCluster资源的metadata部分，可以使用以下标签配置Volcano调度：
+
+| 标签 | 描述 | 是否必需 |
+|------|------|----------|
+| `ray.io/priority-class-name` | 为Pod调度分配[Kubernetes](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass)优先级类 | 否 |
+| `volcano.sh/queue-name` | 指定资源提交的Volcano队列 | 否 |
+| `volcano.sh/network-topology-mode` | 配置网络拓扑感知调度模式 | 否 |
+| `volcano.sh/network-topology-highest-tier-allowed` | 设置调度允许的最高网络层级 | 否 |
+
+#### 自动扩缩容行为
+
+KubeRay与Volcano的集成会根据自动扩缩容是否启用采用不同的gang调度策略：
+
+- **启用自动扩缩容时**：使用`minReplicas`进行gang调度
+- **禁用自动扩缩容时**：使用期望的副本数进行gang调度
+
+这确保了在支持灵活扩缩容行为的同时，gang调度约束能够得到正确维护。
+
+以下是包含详细说明的配置示例。有关完整的配置选项，请参阅[KubeRay Volcano调度器文档](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html#kuberay-integration-with-volcano)。
 
 
+#### 环境要求
 
-### Ray Introduction
+在使用KubeRay部署Ray之前，请确保：
 
-[Ray](https://docs.ray.io/en/latest/ray-overview/getting-started.html) is a unified distributed computing framework designed for AI/ML applications. Ray provides:
-
-- **Distributed Training**: Scale machine learning workloads from a single machine to thousands of nodes
-- **Hyperparameter Tuning**: Run parallel experiments with Ray Tune for efficient model optimization
-- **Distributed Data Processing**: Process large datasets with Ray Data for batch inference and data preprocessing
-- **Reinforcement Learning**: Train RL models at scale with Ray RLlib
-- **Serving**: Deploy and scale ML models in production with Ray Serve
-- **General Purpose Distributed Computing**: Build any distributed application with Ray Core APIs
-
-### Running Ray on Volcano
-
-There are two approaches to deploy Ray clusters on Volcano:
-
-1. **KubeRay Operator Approach**: Use the KubeRay operator with Volcano scheduler integration for automated deployment and management of `RayCluster`, `RayJob` and `RayService` resources
-2. **Volcano Job (vcjob) Approach**: Deploy Ray clusters directly using Volcano Job with the Ray plugin
-
-Both approaches leverage Volcano's powerful scheduling capabilities including gang scheduling and network topology-aware scheduling for optimal resource allocation.
-
-### Method 1: Using KubeRay Operator
-
-[KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/index.html) is an open-source Kubernetes operator that simplifies running Ray on Kubernetes. It provides automated deployment, scaling, and management of Ray clusters through Kubernetes-native tools and APIs.
-
-#### KubeRay Integration with Volcano
-
-Starting with KubeRay v1.5.1, all KubeRay resources (RayJob, RayCluster, and RayService) support Volcano's advanced scheduling features, including gang scheduling and network topology-aware scheduling. This integration optimizes resource allocation and enhances performance for distributed AI/ML workloads.
-
-#### Supported Labels
-
-To configure RayJob and RayCluster resources with Volcano scheduling, you can use the following labels in the metadata section:
-
-| Label | Description | Required |
-|-------|-------------|----------|
-| `ray.io/priority-class-name` | Assigns a [Kubernetes](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass) priority class for pod scheduling | No |
-| `volcano.sh/queue-name` | Specifies the Volcano queue for resource submission | No |
-| `volcano.sh/network-topology-mode` | Configures network topology-aware scheduling mode | No |
-| `volcano.sh/network-topology-highest-tier-allowed` | Sets the highest network tier allowed for scheduling | No |
-
-#### Autoscaling Behavior
-
-KubeRay's integration with Volcano handles gang scheduling differently based on whether autoscaling is enabled:
-
-- **When autoscaling is enabled**: `minReplicas` is used for gang scheduling
-- **When autoscaling is disabled**: The desired replica count is used for gang scheduling
-
-This ensures that the gang scheduling constraints are properly maintained while allowing for flexible scaling behaviors based on your workload requirements.
-
-Below are setup examples with detailed explanations. For comprehensive configuration options, please refer to the [KubeRay Volcano Scheduler Documentation](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html#kuberay-integration-with-volcano).
-
-
-#### Setup Requirements
-
-Before deploying Ray with KubeRay, ensure you have:
-
-- A running Kubernetes cluster with Volcano installed
-- KubeRay Operator installed with Volcano batch scheduler support:
+- 已安装Volcano的Kubernetes集群正常运行
+- 已安装支持Volcano批处理调度器的KubeRay Operator：
 
 ```bash
 # Install KubeRay Operator with Volcano integration
 $ helm install kuberay-operator kuberay/kuberay-operator --version 1.5.1 --set batchScheduler.name=volcano
 ```
 
-#### Example Deployments
+#### 部署示例
 
-##### RayCluster Example
+##### RayCluster示例
 
-Deploy a RayCluster with Volcano scheduling:
+使用Volcano调度部署RayCluster：
 
 ```bash
 # Download the sample RayCluster configuration with Volcano labels
@@ -89,9 +86,9 @@ $ kubectl get pod -l ray.io/cluster=test-cluster-0
 # test-cluster-0-head-jj9bg            1/1     Running   0          36s
 ```
 
-##### RayJob Example
+##### RayJob示例
 
-RayJob support with Volcano is available since KubeRay v1.5.1:
+从KubeRay v1.5.1版本开始支持RayJob与Volcano的集成：
 
 ```bash
 # Download the sample RayJob configuration with Volcano queue integration
@@ -111,28 +108,28 @@ $ kubectl get pod
 # rayjob-sample-0-qmm8s                            0/1     Completed   0          32s
 ```
 
-### Method 2: Using Volcano Job with Ray Plugin
+### 方法二：使用Volcano Job配合Ray插件
 
-Volcano provides a native Ray plugin that simplifies deploying Ray clusters directly through Volcano Jobs. This approach offers a lightweight alternative to KubeRay, allowing you to manage Ray clusters using Volcano's job management capabilities.
+Volcano提供了原生的Ray插件，可以简化通过Volcano Job直接部署Ray集群的流程。该方式作为KubeRay的轻量级替代方案，允许用户使用Volcano的作业管理能力来管理Ray集群。
 
-#### How the Ray Plugin Works
+#### Ray插件工作原理
 
-The Ray plugin automatically:
+Ray插件自动完成以下配置：
 
-- Configures the commands for head and worker nodes in a Ray cluster
-- Opens the required ports for Ray services (GCS: 6379, Dashboard: 8265, Client Server: 10001)
-- Creates a Kubernetes service mapped to the Ray head node for job submission and dashboard access
+- 为Ray集群中的head节点和worker节点配置启动命令
+- 开放Ray服务所需的端口（GCS：6379，Dashboard：8265，Client Server：10001）
+- 创建映射到Ray head节点的Kubernetes Service，用于作业提交和Dashboard访问
 
-#### Setup Requirements
+#### 环境要求
 
-Before deploying Ray with Volcano Job, ensure:
+在使用Volcano Job部署Ray之前，请确保：
 
-- Volcano is installed with the Ray plugin enabled
-- The `svc` plugin is also enabled (required for service creation)
+- 已安装Volcano并启用Ray插件
+- 同时启用`svc`插件（创建Service所必需）
 
-#### Example Deployment
+#### 部署示例
 
-Create a Ray cluster with one head node and two worker nodes:
+创建一个包含1个head节点和2个worker节点的Ray集群：
 
 ```yaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -170,14 +167,14 @@ spec:
           restartPolicy: OnFailure
 ```
 
-Apply the configuration:
+应用配置：
 ```bash
 kubectl apply -f ray-cluster-job.yaml
 ```
 
-#### Accessing the Ray Cluster
+#### 访问Ray集群
 
-Once deployed, you can access the Ray cluster through the automatically created service:
+部署完成后，可以通过自动创建的Service访问Ray集群：
 
 ```bash
 # Check pod status
@@ -200,7 +197,7 @@ kubectl port-forward service/ray-cluster-job-head-svc 8265:8265
 ray job submit --address http://localhost:8265 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
 ```
 
-### Learn More
+### 了解更多
 
-- For KubeRay integration details, visit the [KubeRay Volcano Scheduler Documentation](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html#kuberay-integration-with-volcano)
-- For Volcano Job Ray plugin details, see the [Volcano Ray Plugin Guide](https://github.com/volcano-sh/volcano/blob/master/docs/user-guide/how_to_use_ray_plugin.md)
+- 有关KubeRay集成的详细信息，请访问[KubeRay Volcano调度器文档](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html#kuberay-integration-with-volcano)
+- 有关Volcano Job Ray插件的详细信息，请参阅[Volcano Ray插件指南](https://github.com/volcano-sh/volcano/blob/master/docs/user-guide/how_to_use_ray_plugin.md)

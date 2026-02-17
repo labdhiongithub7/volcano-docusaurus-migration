@@ -1,105 +1,117 @@
 ---
-title: "Cloud Native Colocation"
+title: "云原生混部"
 ---
 
-## Background
+## 背景
 
-With the rapid development of cloud-native technologies, more and more workloads have gradually migrated to Kubernetes, adopting cloud-native approaches for development and maintenance. This has greatly simplified application deployment, orchestration, and operations. Kubernetes has gradually become the "operating system" of the cloud-native era. However, despite the adoption of cloud-native technologies, resource utilization in data centers remains relatively low. To improve resource utilization while ensuring the Service Level Objectives (SLOs) of high-priority workloads, Volcano has introduced a cloud-native colocation solution. This solution provides end-to-end resource isolation and sharing mechanisms from the application layer to the kernel, maximizing resource utilization.
+随着云原生技术的快速发展，越来越多的业务已逐渐迁移到Kubernetes，使用云原生化的方式进行开发维护，极大地简化了应用程序的部署、编排和运维，Kubernetes已逐渐成为云原生时代的“操作系统”。但在另一方面，应用云原生技术之后，数据中心的资源使用率仍然较低，为了提升资源利用率同时保障高优先级业务的SLO，Volcano推出了云原生混部解决方案，从应用层到内核提供端到端的资源隔离与共享机制，最大化提升资源利用率。
 
-Cloud-native colocation refers to deploying online and offline workloads in the same cluster using cloud-native methods. Since online workloads exhibit significant peak and off-peak characteristics, offline workloads can utilize idle resources during off-peak periods. When online workloads reach peak usage, mechanisms such as online job priority control are used to suppress the operation of offline jobs, ensuring resource availability for online jobs. This approach improves overall cluster resource utilization while guaranteeing the SLOs of online workloads.
+云原生混部是指通过云原生的方式将在线业务和离线业务部署在同一个集群。由于在线业务运行具有明显的波峰波谷特征，因此当在线业务运行在波谷时，离线业务可以利用这部分空闲的资源，当在线业务到达波峰时，通过在线作业优先级控制等手段压制离线作业的运行，保障在线作业的资源使用，从而提升集群的整体资源利用率，同时保障在线业务SLO。
 
-Typical online and offline workloads have the following characteristics:
+典型的在线、离线业务具有如下特征:
 
-|                      | **Online Workload**                                      | **Offline Workload**                                         |
-| -------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
-| Typical Applications | Microservices, search, recommendation, advertising, etc. | Batch processing, Big data, AI training, video transcoding, etc. |
-| Latency              | Sensitive                                                | Insensitive                                                  |
-| SLO                  | High                                                     | Low                                                          |
-| Load Model           | Time-based                                               | Continuous resource usage                                    |
-| Fault Tolerance      | Low tolerance, high availability requirements            | Allows failure and retries                                   |
-| Runtime              | Stable and continuous operation                          | Task-based, short runtime                                    |
+|          | **在线业务**               | **离线业务**                     |
+| -------- | -------------------------- | -------------------------------- |
+| 典型应用 | 微服务、搜索、推荐、广告等 | 大数据批处理、AI训练、视频转码等 |
+| 时延     | 敏感                       | 不敏感                           |
+| SLO      | 高                         | 低                               |
+| 负载模型 | 分时性                     | 持续占用资源                     |
+| 错误容忍 | 容忍度低，对可用性要求高   | 允许失败重试                     |
+| 运行时间 | 稳定持续运行               | 任务型、运行时间短               |
 
-## Advantages
+## 优势
 
-Many companies and users in the industry have explored and practiced colocation technologies to varying degrees, providing positive and beneficial designs and practices for colocation. However, there are some shortcomings, such as the inability to fully decouple from Kubernetes, rough oversubscription resource calculation methods, inconsistent usage patterns for online and offline jobs, and poor user experience.
+业界有较多的公司和用户对在离线混部技术进行了不同程度的探索与实践，为在离线混部提供了积极有益的设计与实践，但也存在一些不足之处，比如不能做到和Kubernetes完全解耦，超卖资源计算方式粗糙，在离线作业使用方式不一致、用户体验不友好等问题。
 
-Based on these considerations, Volcano has further enhanced and optimized colocation technologies. Compared to industry colocation solutions, Volcano offers the following advantages:
+基于以上考虑，Volcano针对在离线混部技术进行了进一步的增强与优化，对比业界的在离线混部我们具有如下的优势：
 
-- Volcano Scheduler natively supports offline workloads scheduling and management.
-- No intrusive modifications to Kubernetes.
-- Real-time dynamic calculation of oversubscribed resources, better balancing resource utilization and workload QoS requirements.
-- OS-level isolation and QoS guarantees.
+- Volcano Scheduler天然支持离线作业调度与管理。
+- 对Kubernetes无侵入式修改。
+- 超卖资源实时动态计算，更好地平衡资源利用与与业务QoS需求。
+- OS层面的隔离与QoS保障。
 
-## Architecture
+## 架构
 
-The cloud-native colocation architecture mainly includes the Volcano Scheduler, Volcano SLO Agent, and Enhanced OS.
+整个云原生混部架构主要包括Volcano Scheduler、Volcano SLO Agent、Enhanced OS几部分。
 
-- **Volcano Scheduler**: Responsible for unified scheduling of online and offline workloads, providing abstractions such as queues, groups, job priorities, fair scheduling, and resource reservation to meet the scheduling needs of microservices, big data, AI, and other workloads.
-- **Volcano SLO Agent**: Each node in the cluster deploys a Volcano SLO Agent, which dynamically calculates the allocated but unused resources on each node and oversubscribes these resources for offline workloads. It also ensures node QoS by evicting offline workloads when CPU/memory pressure is detected, ensuring the priority of online workloads.
-- **Enhanced OS**: The Volcano SLO Agent provides node-level QoS guarantees at the application layer. For more refined and mandatory isolation, the kernel also needs to distinguish QoS types and isolate resources at the CPU, memory, network, and L3 cache levels. The kernel exposes a series of cgroup interfaces, allowing the Volcano SLO Agent to set different cgroups for online and offline workloads, achieving fine-grained kernel-level isolation and enabling online jobs to suppress offline workloads.
+- Volcano Scheduler：负责在离线作业的统一调度，提供队列、组、作业优先级、公平调度、资源预留等多种抽象，统一满足微服务、大数据、AI等业务调度需求。
+- Volcano SLO Agent：集群内的每个节点都会部署一个Volcano SLO Agent，动态实时计算每个节点已经分配但未使用的资源，将这部分资源进行超卖，供离线作业进行使用。同时对节点QoS进行保障，在检测到节点出现CPU/Memory压力时，对离线作业进行驱逐，保障在线业务的优先级。
+- Enhanced OS：Volcano SLO Agent在应用层进行节点级别的QoS保证，为了进行更加精细化和强制性的隔离，内核层面也需要区分QoS类型，在CPU/Memory/Network/L3 cache等层面进行隔离，内核暴露了一系列的cgroup接口，Volcano SLO Agent可以为在线和离线业务设置不同的cgroup，做到内核层面的精细隔离，实现在线作业对离线作业的压制。
 
-## Features
+![架构](/img/blog/architecture.png)
 
-### QoS-Based colocation Model
+## 功能
 
-After colocating online and offline workloads in the same cluster, offline workloads, which are typically CPU or IO-intensive, can interfere with online workloads, leading to degraded QoS for online workloads. To minimize the interference of offline workloads on online workloads, it is necessary to implement QoS classification and control for online and offline workloads. By labeling online and offline workloads, a QoS model is defined, ensuring that online workload QoS is prioritized during runtime and reducing interference from offline workloads.
+### 基于QoS的混部模型
 
-Based on the classification and operational characteristics of online and offline workloads, Volcano abstracts a model and defines different QoS levels. Different types of workloads can set different QoS levels, which are mapped to CPU and memory levels in the kernel. Higher levels will gain greater resource usage rights and preemption priority. During scheduling, different QoS levels corresponding to job types are distinguished, and rich scheduling policies are executed. Meanwhile, the Volcano SLO Agent calls kernel interfaces to set different QoS priorities for online and offline workloads. The QoS model is defined as follows:
+将在线和离线作业混合部署在一个集群之后，由于离线作业通常是CPU或者IO密集型任务，因此会对在线作业造成干扰，导致在线业务QoS受损，为了尽可能降低离线业务对在线业务的干扰，需要对在线和离线业务进行QoS分级管控，通过对在线和离线作业进行标识来定义QoS模型，进而在运行态优先保障在线业务QoS，降低离线作业对在线的干扰。
 
-|           QoS Level            |                Typical Application Scenarios                 | CPU Priority | Memory Priority |
-| :----------------------------: | :----------------------------------------------------------: | :----------: | :-------------: |
-|     LC (Latency Critical)      | Core online workloads with extremely high latency sensitivity, exclusive CPU usage |  Exclusive   |        0        |
-| HLS (Highly Latency Sensitive) |   Online workloads with extremely high latency sensitivity   |      2       |        0        |
-|     LS (Latency Sensitive)     |         Nearline workloads with latency sensitivity          |      1       |        0        |
-|        BE (Best Effort)        |   Offline AI and big data workloads, tolerant to eviction    |      -1      |       -1        |
+根据在线和离线作业的分类和运行特点，Volcano对在线和离线作业做了模型抽象，定义了不同的QoS等级，不同类型的业务可以设置不同的QoS等级，同时在内核层面映射到CPU和Memory等级，更高的等级将会获得更高的资源使用权和抢占优先级。在调度时会区分不同QoS等级对应的作业类型，执行丰富的调度策略，同时通过Volcano SLO Agent调用内核接口为在离线作业设置不同的QoS优先级。QoS模型定义如下：
 
-Users can set the annotation of the workload's corresponding Pod to indicate different workloads types. For example, setting `volcano.sh/qos-level="LS"` indicates that the Pod is a latency-sensitive nearline workload, while setting `volcano.sh/qos-level="BE"` indicates that the Pod is an offline workload.
+|            Qos等级            |            典型应用场景             | CPU优先级 | Memory优先级 |
+| :---------------------------: | :---------------------------------: | :-------: | :----------: |
+|     LC(Latency Critical)      | 时延敏感极高的核心在线业务，独占CPU |   独占    |      0       |
+| HLS(Highly Latency Sensitive) |       时延敏感极高的在线业务        |     2     |      0       |
+|     LS(Latency Sensitive)     |        时延敏感型的近线业务         |     1     |      0       |
+|        BE(Best Effort)        |  离线的AI、大数据业务，可容忍驱逐   |    -1     |      -1      |
 
-### Unified Scheduling of Online and Offline workloads
+用户可以通过设置作业对应Pod的annotation来表示不同的作业类型，比如设置volcano.sh/qos-level="LS"，表示Pod为时延敏感型的近线作业，设置volcano.sh/qos-level="BE"，表示Pod为离线作业。
 
-When deploying online and offline workloads in the same cluster, using multiple schedulers to schedule different types of workloads can lead to concurrent resource update conflicts, as each scheduler has a global view of resources. To avoid this issue, a unified scheduler is needed to schedule both online and offline workloads.
+### 在离线作业统一调度
 
-As the industry's first cloud-native batch computing project, Volcano natively supports the scheduling and management of AI and big data workloads. It also supports multi-tenant queue management and fair scheduling, unifying support for almost all mainstream computing frameworks, including Ray, Kubeflow, Spark, Flink, PyTorch, TensorFlow, MPI, Horovod, MindSpore, PaddlePaddle, MXNet, Argo, and more. It integrates Kubernetes' default scheduling algorithms, supporting unified scheduling of batch jobs and microservices, and prioritizes scheduling based on the job's QoS model. Therefore, it supports unified scheduling of online and offline workloads.
+将在线和离线作业同时部署在一个集群时，使用多个调度器分别调度不同类型的作业时，每个调度器都可以看到全局的资源视图，多个调度器在进行节点资源计算和绑定时，就极有可能存在并发资源更新冲突，为了避免这一问题，需要用统一的调度器调度在线和离线作业。
 
-### Dynamic Resource Oversubscription
+Volcano作为业界首个云原生批量计算项目，天然支持AI、Big Data等作业的调度和管理，并且支持多租户的队列管理和公平调度，统一支持几乎所有主流的计算框架，包括Ray 、Kubeflow、Spark、Flink、Pytorch、Tensorflow、MPI、Horovod、MindSpore、PaddlePaddle、MXNet、Argo等。并且集成了K8s默认的调度算法，支持批处理作业和微服务的统一调度，根据作业的QoS模型进行优先级调度。因此支持在线和离线作业的统一调度。
 
-Kubernetes' existing resource scheduling model is based on Pod requests. However, users often blindly set high request values while actual usage is low, leading to resource waste. Additionally, online jobs exhibit significant peak and off-peak characteristics, making it ideal to oversubscribe underutilized resources during off-peak periods for offline workloads, thereby improving cluster resource utilization.
+### 动态资源超卖
 
-The Volcano SLO Agent dynamically calculates the allocated but unused resources of Pods and oversubscribes these resources for offline workloads, increasing Pod deployment density and improving resource utilization.
+Kubernetes现有的资源调度模型基于Pod的requests进行计算，而用户在设置资源requests时往往具有盲目性，requests值设置较大而实际使用量很少，导致资源浪费。同时对于在线作业而言，其运行规律具有明显的波峰波谷特征，因此在业务运行低谷时期，非常适合将未充分使用的资源进行二次超卖，给离线作业使用，从而提升集群的资源利用率。
 
-The increase in oversubscribed resources changes the node's original available resources, and oversubscribed resources are exclusively used by offline workloads. Therefore, different schemes are available for calculating, reporting, and using oversubscribed resources. To better decouple from Kubernetes and support user-defined oversubscribed resource representations, Volcano provides native and extend modes for oversubscribed resource calculation and reporting. The native mode reports oversubscribed resources to the node's `allocatable` field, ensuring consistent usage patterns for online and offline workloads and improving user experience. The extend mode supports reporting oversubscribed resources as extended resources, decoupling from Kubernetes. Users can flexibly choose the reporting and usage methods of oversubscribed resources based on actual needs.
+Volcano SLO Agent实时计算Pod已经申请但未使用的资源，将这部分资源动态超卖给离线作业使用，提高Pod部署密度，提升资源利用率。
 
-### QoS Guarantees
+<!-- ![动态资源超卖原理图](img/colocation/oversubscription.png) -->
 
-After colocating online and offline workloads, resource competition between offline and online workloads can cause interference with online workloads. Therefore, while improving resource utilization, it is essential to ensure the QoS of online workloads and avoid interference from offline workloads.
+由于超卖资源的增加，改变了节点原有的资源可用量，且超卖资源单独给离线作业使用，因此对于超卖资源的计算、上报方式和使用方式会有不同的方案选择。为了更好地与Kubernetes解耦，以及支持用户自定义设置超卖资源的表现形式，Volcano提供了native、extend等超卖资源计算和上报模式，native的模式会上报超卖资源至节点的allocatable字段，这样一来在线和离线作业的使用方式是一致的，提升了用户体验 ，而extend模式支持将超卖资源以扩展方式上报至节点，做到和Kubernetes的解耦，用户可以根据实际需求灵活选择超卖资源的上报和使用方式。
 
-Offline workloads typically use various types of resources, so resource isolation measures need to be implemented for each dimension. Volcano sets resource isolation for CPU, memory, and network through kernel interfaces. When resource competition occurs between online and offline workloads, the resource usage of offline workloads is suppressed to prioritize the QoS of online workloads.
+### QoS保障
 
-- **CPU:** The OS provides five levels of CPU QoS, ranging from -2 to 2. Higher QoS levels indicate more CPU time slices and higher preemption priority. By setting the `cpu.qos_level` in the CPU subsystem's cgroup, different CPU QoS levels can be assigned to different workloads.
+将在线和离线作业混合部署后，由于离线作业和在线作业会发生资源争用，离线作业会对在线业务造成干扰，因此在资源利用率提升的同时还需要保障在线作业的QoS，避免离线业务对在线业务的干扰。
 
-- **Memory:** Memory isolation ensures that offline jobs are preferentially OOM killed when the system experiences OOM. By setting the `memory.qos_level` in the memory subsystem's cgroup, different Memory QoS levels can be assigned to different workloads.
+在离线作业通常会使用多种不同维度的资源，因此需要对各个维度的资源设置资源隔离措施，Volcano会通过内核态接口设置CPU、Memory、Network等维度的资源隔离，当在离线作业发生资源争用时，压制离线作业的资源使用，优先保障在线作业QoS。
 
-- **Network:** Network isolation ensures egress bandwidth guarantees for online jobs. It is based on the node's total bandwidth and uses cgroup, tc, and eBPF technologies to suppress the egress bandwidth of offline jobs for online workloads.
+- **CPU:** OS层面提供了5级CPU QoS等级，数值从-2到2，QoS等级越高则代表可以获得更多的CPU时间片并有更高的抢占优先级。通过设置cpu子系统的cgroup cpu.qos_level可以为不同业务设置不用的CPU QoS。
 
-The figure above shows the technical solution for network isolation. By injecting rate-limiting programs into the kernel using eBPF, packet forwarding is controlled to achieve rate limiting. The cgroup eBPF can label packets of online and offline workloads to distinguish their traffic. The tc eBPF sets three watermarks: online workload watermark, offline workload high watermark, and offline workload low watermark. When online workload traffic exceeds the watermark, the bandwidth of offline workloads is limited, with the upper limit set to the offline workload low watermark, yielding to online traffic. When online workload traffic is below the watermark, the bandwidth limit for offline workloads is lifted, with the upper limit set to the offline workload high watermark, improving resource utilization. Additionally, the packet sending time (EDT) can be calculated based on the bandwidth of offline traffic to implement rate limiting for offline workloads.
+- **Memory:** Memory隔离体现在系统发生OOM时离线作业会被有限OOM Kill掉，通过设置memory子系统的cgroup memory.qos_level可以为不同业务设置不同的Memory QoS。
+
+- **Network:** 网络隔离实现了对在线作业的出口网络带宽保障，它基于整机的带宽大小，并通过cgroup + tc + ebpf技术，实现在线作业对离线作业的出口网络带宽压制。
+
+<!-- ![网络隔离技术方案](img/colocation/network.png) -->
+
+上图为网络隔离的技术方案，通过ebpf将限速程序注入到kernel，实现对报文转发的控制，从而达到限速的目的。cgroup ebpf可以为在离线业务的的报文设置不同的标签以区分在线和离线业务流量，tc ebpf可以设置三个水位线：在线业务水位线，离线业务高水位线和离线业务低水位线。当在线业务流量超过水位线时，限制离线作水位带宽，离线业务带宽使用上限为离线业务低水位线，避让在线流量；当在线业务流量低于水位线时，放开对离线作业的带宽限制，离线业务带宽使用上限为离线业务高水位线，提高资源利用率，同时可以根据离线流量带宽计算报文的发送时间（EDT），实现离线作业流量限速。
+
+<!-- ![在离线作业带宽限制示意图](img/colocation/watermark.png) -->
 
 ### CPU Burst
 
-If a container in a Pod has a CPU limit set, the container's CPU usage will be capped at the limit value, resulting in CPU throttling. Frequent CPU throttling can affect workload performance, increasing the tail latency of workload responses, especially for latency-sensitive workloads.
+若Pod中容器设置了CPU Limit值，则该容器CPU使用将会被限制在Limit值以内，形成对CPU的限流。频繁的CPU限流会影响业务性能，增大业务长尾响应时延，对于时延敏感型业务的影响尤为明显。
 
-The CPU Burst capability of the Volcano agent provides an elastic throttling mechanism that allows brief bursts beyond the CPU limit to reduce workload tail latency. The principle is that when a workload has unused CPU quota in a CPU scheduling period, the system accumulates these unused quotas. In subsequent scheduling periods, if the workload needs to exceed the CPU limit, it can use the accumulated CPU quota to achieve a burst beyond the limit.
+Volcano agent的CPU Burst能力提供了一种可以短暂突破CPU Limit值的弹性限流机制，以降低业务长尾响应时间。其原理是业务在每个CPU调度周期内使用的CPU配额有剩余时，系统对这些CPU配额进行累计，在后续的调度周期内如果需要突破CPU Limit时，使用之前累计的CPU配额，以达到突破CPU Limit的效果。
 
-When CPU Burst is not enabled, the container's CPU usage is strictly limited to the CPU limit, and bursting is not possible. As shown below:
+当未开启CPU Burst时，容器可以使用的CPU配额会被限制在Limit以内，无法实现Burst。如下图所示：
 
-When CPU Burst is enabled, the container's CPU usage can exceed the limit, enabling bursting. As shown below:
+<!-- ![未开启CPU Burst](img/colocation/cpu-burst1.png) -->
 
-With the CPU Burst capability provided by the Volcano agent, high-priority workloads can avoid throttling at critical moments, ensuring the stability of latency-sensitive workloads.
+开启CPU Burst后，容器使用的CPU配额可以突破Limit限制，实现Burst。如下图所示：
 
-## Usage Guide
+<!-- ![开启CPU Burst](img/colocation/cpu-burst2.png) -->
 
-### Installing the Volcano Agent
+通过Volcano agent提供的CPU Burst能力，可以避免高优业务在关键时刻被限流，保障时延敏感型业务的稳定性。
 
-#### Install via Helm
+## 使用指导
+
+### 安装Volcano agent
+
+#### 通过 Helm 安装
 
 ```shell
 helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
@@ -108,15 +120,16 @@ helm repo update
 
 helm install volcano volcano-sh/volcano -n volcano-system --create-namespace --set custom.colocation_enable=true
 ```
-#### Install via Yaml
 
-Please follow this [document](https://github.com/volcano-sh/volcano?tab=readme-ov-file#quick-start-guide) to install Volcano, and then use the following command to install the Volcano agent.
+#### 通过 Yaml 安装
+
+请按照该[文档](https://github.com/volcano-sh/volcano?tab=readme-ov-file#quick-start-guide)安装Volcano，然后通过以下命令安装Volcano agent。
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-agent-development.yaml
 ```
 
-Check that all Volcano components are running successfully.
+并检查Volcano所有组件已成功运行。
 
 ```shell
 kubectl get po -n volcano-system
@@ -128,21 +141,21 @@ volcano-controllers-7655bb499f-gpg9l   1/1     Running     0          3d
 volcano-scheduler-6bf4759c45-c666z     1/1     Running     0          3d
 ```
 
-Enable colocation and oversubscription by labeling nodes.
+通过设置标签的方式，在节点级别打开混部和超卖开关。
 
 ```shell
-kubectl label node $node volcano.sh/oversubscription=true # replace $node with real node name in your Kubernetes cluster.
+kubectl label node $node volcano.sh/oversubscription=true # replace $node with real node name in your kubernetes cluster.
 
-kubectl label node $node volcano.sh/colocation=true # replace $node with real node name in your Kubernetes cluster.
+kubectl label node $node volcano.sh/colocation=true # replace $node with real node name in your kubernetes cluster.
 ```
 
-### CPU Burst Example
+### CPU Burst示例
 
-This example demonstrates how to use CPU Burst and its benefits.
+该示例将演示如何使用 CPU Burst 及它带来的收益。
 
-#### Enabling CPU Burst
+#### 开启CPU Burst
 
-Deploy a Deployment and expose a ClusterIP service. The annotation `volcano.sh/enable-quota-burst: "true"` enables CPU Burst for the Pod.
+部署一个Deploment并暴露类型为 Cluster IP 的service，Pod 的注解 `volcano.sh/enable-quota-burst: "true"` 表示为 Pod 开启CPU Burst功能。
 
 ```yaml
 apiVersion: apps/v1
@@ -160,7 +173,7 @@ spec:
       labels:
         app: nginx
       annotations: 
-        volcano.sh/enable-quota-burst: "true" # pod enabled CPU Burst 
+        volcano.sh/enable-quota-burst: "true" # pod enabled cpu burst 
     spec:
       containers:
       - name: container-1
@@ -189,20 +202,20 @@ spec:
   type: ClusterIP
 ```
 
-#### Stress Testing
+#### 进行压力测试
 
-Use the `stress` tool to apply pressure to the nginx Pod.
+使用`stress`工具为nginx Pod加压。
 
 ```bash
 wrk -H "Accept-Encoding: deflate, gzip" -t 2 -c 8 -d 120  --latency --timeout 2s http://$(kubectl get svc nginx -o jsonpath='{.spec.clusterIP}')
 ```
 
-#### Checking CPU Throttling
+#### 检查CPU限流情况
 
-Check the CPU throttling status of the Pod's container. We can see that `nr_bursts` and `burst_time` are not zero, while `nr_throttled` and `throttled_time` are relatively small, indicating that the Pod has used burst CPU quotas.
+检查 Pod 容器的 CPU 限流状态，我们可以看到 `nr_bursts` 和 `burst_time` 不为 0，而 `nr_throttled` 和 `throttled_time` 是一个较小的值，这表明 Pod 已经使用了突发的 CPU 配额。
 
 ```bash
-cat /sys/fs/cgroup/cpu/kubepods/burstable/podd2988e14-83bc-4d3d-931a-59f8a3174396/cpu.stat # replace nginx pod uid in your Kubernetes cluster.
+cat /sys/fs/cgroup/cpu/kubepods/burstable/podd2988e14-83bc-4d3d-931a-59f8a3174396/cpu.stat # replace nginx pod uid in your kubernetes cluster.
 nr_periods 1210
 nr_throttled 9
 throttled_time 193613865
@@ -210,10 +223,10 @@ nr_bursts 448
 burst_time 6543701690
 ```
 
-If we set the Pod's annotation `volcano.sh/enable-quota-burst=false` (disabling CPU Burst) and perform another stress test, `nr_throttled` and `throttled_time` will be relatively large, indicating strict CPU throttling, while `nr_bursts` and `burst_time` will be zero, indicating no CPU Burst occurred.
+如果我们设置 Pod 的注解 `volcano.sh/enable-quota-burst=false`（禁用 Pod 的 CPU Burst）并进行另一次压力测试，`nr_throttled` 和 `throttled_time` 将会是一个相对较大的值，这表明 Pod 的 CPU 被严格限制；而 `nr_bursts` 和 `burst_time` 为 0，表明 Pod 的 CPU Burst 没有发生。
 
 ```bash
-cat /sys/fs/cgroup/cpu/kubepods/burstable/podeeb542c6-b667-4da4-9ac9-86ced4e93fbb/cpu.stat #replace nginx pod uid in your Kubernetes cluster.
+cat /sys/fs/cgroup/cpu/kubepods/burstable/podeeb542c6-b667-4da4-9ac9-86ced4e93fbb/cpu.stat #replace nginx pod uid in your kubernetes cluster.
 nr_periods 1210
 nr_throttled 488
 throttled_time 10125826283
@@ -221,37 +234,37 @@ nr_bursts 0
 burst_time 0
 ```
 
-#### Notes
+#### 说明
 
-CPU Burst relies on Linux kernel functionality. This feature is only effective on hosts with Linux kernel versions >= 5.14 and certain Linux distributions (e.g., OpenEuler 22.03 SP2 or later).
+CPU Burst 依赖于 Linux 内核提供的功能，该特性仅在主机使用的 Linux 内核版本 >= 5.14 以及某些 Linux 发行版（如 OpenEuler 22.03 SP2 或更高版本）上生效。
 
-### Dynamic Resource Oversubscription Example
+### 动态资源超卖示例
 
-This example demonstrates the dynamic resource capabilities on a node and shows the suppression and eviction mechanisms when the node faces resource pressure. The node is configured with 8 CPU cores and 16GB of memory.
+本示例将演示节点上的动态资源能力，并展示节点在面临资源压力时的压制和驱逐机制。节点的配置为 8 核 CPU 和 16GB 内存。
 
-#### Checking Node Oversubscribed Resources
+#### 检查节点超卖资源
 
-Oversubscribed resources on a node are calculated by subtracting the actual resource usage from the node's allocatable resources. Oversubscribed resources include CPU and memory, represented by `kubernetes.io/batch-cpu` and `kubernetes.io/batch-memory`, respectively, and reported as extended resources in the node's `Allocatable` field. Online tasks use native resources (`cpu` and `memory`), while offline tasks use oversubscribed resources (`kubernetes.io/batch-cpu` and `kubernetes.io/batch-memory`), increasing Pod deployment density and resource utilization.
+节点的超卖资源是通过节点的可分配资源（`Allocatable`）减去实际资源使用量得到的。超卖资源包括 CPU 和内存，分别由 `kubernetes.io/batch-cpu` 和 `kubernetes.io/batch-memory` 表示，并作为扩展资源上报到节点的 `Allocatable` 字段中。在线任务使用原生资源（`cpu` 和 `memory`），而离线任务使用超卖资源（`kubernetes.io/batch-cpu` 和 `kubernetes.io/batch-memory`），这样可以提高 Pod 的部署密度和资源利用率。
 
 ```bash
-kubectl describe node $node # replace $node with a real node in your cluster
+kubectl describe node $node # 将$node替换为群集中的真实节点
 Allocatable:
   cpu:                         8
   ephemeral-storage:           33042054704
   hugepages-1Gi:               0
   hugepages-2Mi:               0
-  kubernetes.io/batch-cpu:     7937 # CPU oversubscribed resources, in millicores (1 core = 1000 millicores)
-  kubernetes.io/batch-memory:  14327175770 # Memory oversubscribed resources, in bytes
+  kubernetes.io/batch-cpu:     7937 # CPU超卖资源，单位为毫核cpu（1核CPU=1000毫核CPU）
+  kubernetes.io/batch-memory:  14327175770 # emory超卖资源, 单位为字节
   memory:                      15754924Ki
   pods:                        110
 ```
 
-#### Deploying Online and Offline Jobs
+#### 部署在线和离线作业
 
-Online jobs are identified by setting the annotation `volcano.sh/qos-level: "LC"`, `volcano.sh/qos-level: "HLS"`, or `volcano.sh/qos-level: "LS"`. Offline jobs are identified by setting the annotation `volcano.sh/qos-level: "BE"` and can only use oversubscribed resources (`kubernetes.io/batch-cpu` and `kubernetes.io/batch-memory`). We use an image containing the `stress` tool to simulate the pressure increase of online jobs. If you cannot access this image, you can replace it with another image containing the `stress` tool.
+在线作业通过设置注解 `volcano.sh/qos-level: "LC"`、`volcano.sh/qos-level: "HLS"` 或 `volcano.sh/qos-level: "LS"` 来标识。离线作业通过设置注解 `volcano.sh/qos-level: "BE"` 来标识，它只能使用超分配资源（`kubernetes.io/batch-cpu` 和 `kubernetes.io/batch-memory`）。我们使用一个包含 `stress` 工具的镜像来模拟在线作业的业务压力上升。如果你无法访问该镜像，也可以替换为其他包含 `stress` 工具的镜像。
 
 ```yaml
-# Online Job
+# 在线作业
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -267,18 +280,18 @@ spec:
       labels:
         app: online-demo
       annotations:
-        volcano.sh/qos-level: "HLS" # Identify online jobs
+        volcano.sh/qos-level: "HLS" # 标识在线作业
     spec:
       containers:
       - name: container-1
         image: polinux/stress
         imagePullPolicy: IfNotPresent
-        command: ["stress", "--cpu", "7"] # Run stress test
+        command: ["stress", "--cpu", "7"] # 执行stress压测
         resources:
           requests:
             cpu: 2
 ---
-# Offline Job
+# 离线作业
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -294,18 +307,18 @@ spec:
       labels:
         app: offline-demo
       annotations: 
-        volcano.sh/qos-level: "BE" # Identify offline jobs
+        volcano.sh/qos-level: "BE" # 标识离线作业
     spec:
       containers:
       - name: container-1
         image: nginx:latest
         resources:
           requests:
-            kubernetes.io/batch-cpu: 4000 # 4 CPU cores
-            kubernetes.io/batch-memory: 10737418240 # 10Gi memory
+            kubernetes.io/batch-cpu: 4000 # 4核CPU
+            kubernetes.io/batch-memory: 10737418240 # 10Gi内存
 ```
 
-#### Ensuring Online and Offline Jobs Run Successfully
+#### 确保在线作业和离线作业成功运行
 
 ```bash
 kubectl get po
@@ -314,31 +327,31 @@ offline-demo-f59758bb-vlbp7   1/1     Running   0          6s
 online-demo-9f9bbdb58-fljzs   1/1     Running   0          6s
 ```
 
-#### Eviction Mechanism Under Node Pressure
+#### 节点压力下的驱逐机制
 
-When a node experiences pressure and resource utilization reaches the set threshold, the eviction mechanism is triggered. The QoS of online jobs is guaranteed by both the **Volcano Agent** and the **host OS**. The Volcano Agent monitors node resource utilization in real-time. When node resource utilization exceeds the threshold, offline jobs are evicted. For CPU resources, the default threshold is **80%**. We simulate resource pressure by applying **7 CPU cores of pressure** to the online job. After about 1 minute, we can observe the offline job being evicted through event logs.
+当节点出现压力，资源资源利用率达到设定的阈值时，会触发驱逐机制。在线作业的 QoS（服务质量）由 **Volcano Agent** 和 **主机操作系统** 共同保障。Volcano Agent 会实时检测节点的资源利用率，当节点资源利用率超过阈值时，会驱逐离线作业。对于 CPU 资源，默认阈值是 **80%**。我们通过为在线作业施加 **7 核 CPU 压力** 来模拟资源压力，大约 1 分钟后，可以通过事件日志观察到离线作业被驱逐。
 
 ```bash
 kubectl get event | grep Evicted
-69s         Warning   Evicted                   pod/offline-demo-785cff7f58-gwqwc    Evict offline pod due to CPU resource pressure
+69s         Warning   Evicted                   pod/offline-demo-785cff7f58-gwqwc    Evict offline pod due to cpu resource pressure
 ```
 
-When node resource pressure increases, we can observe that oversubscribed resources (`kubernetes.io/batch-cpu` and `kubernetes.io/batch-memory`) decrease. This is because oversubscribed resources are calculated by subtracting actual resource usage from the node's allocatable resources. When resource usage by online or offline jobs increases, the node's available resources decrease, leading to a reduction in oversubscribed resources.
+当节点资源压力上升时，我们可以观察到超卖资源（`kubernetes.io/batch-cpu` 和 `kubernetes.io/batch-memory`）会减少。这是因为超卖资源是通过节点的可分配资源减去实际资源使用量计算得出的。当在线或者离线作业的资源使用量增加时，节点的可用资源减少，从而导致超卖资源也随之减少。
 
 ```bash
-kubectl describe node $node # replace $node with a real node in your cluster
+kubectl describe node $node # 将$node替换为群集中的真实节点
 Allocatable:
   cpu:                         8
   ephemeral-storage:           33042054704
   hugepages-1Gi:               0
   hugepages-2Mi:               0
-  kubernetes.io/batch-cpu:     978 # CPU oversubscribed resources decrease
+  kubernetes.io/batch-cpu:     978 # CPU超卖资源减少
   kubernetes.io/batch-memory:  14310391443
   memory:                      15754924Ki
   pods:                        110
 ```
 
-When eviction occurs, the **Volcano Agent** adds an eviction taint to the current node to prevent new workloads from being scheduled to the node, avoiding additional burden on the already pressured node. We can observe that newly created offline job Pods will remain in the `Pending` state due to this eviction taint.
+当驱逐发生时，**Volcano Agent** 会为当前节点添加一个驱逐污点（Eviction Taint），以避免新的工作负载继续调度到该节点，从而避免给已经处于压力下的节点增加额外的负担。我们可以观察到，新创建的离线作业 Pod 会因为该驱逐污点而处于 `Pending` 状态。
 
 ```bash
 kubectl get po
@@ -353,37 +366,62 @@ Events:
   Warning  FailedScheduling  69s   default-scheduler  0/1 nodes are available: 1 node(s) had taint {volcano.sh/offline-job-evicting: }, that the pod didn't tolerate.
 ```
 
-If the online job is stopped to release node resource pressure, the **Volcano Agent** detects the decrease in node resource utilization and automatically removes the eviction taint. Once the taint is removed, new Pods can be scheduled to the node normally.
+如果停止在线作业以释放节点的资源压力，**Volcano Agent** 会检测到节点资源利用率下降，并自动移除驱逐污点（Eviction Taint）。一旦污点被移除，新的 Pod 就可以正常调度到该节点上。
 
-#### Notes
+#### 说明
 
-The **Volcano Agent** defines a QoS resource model for online and offline jobs and provides application-level guarantees for online jobs (e.g., evicting offline jobs under node resource pressure). Meanwhile, CPU and memory isolation and suppression are guaranteed at the OS level by the **host kernel**. Note that the Volcano Agent currently only supports **openEuler 22.03 SP2** and later versions, so ensure the correct OS type and version when using this feature.
+**Volcano Agent** 为在线作业和离线作业定义了一个 QoS（服务质量）资源模型，并为在线作业提供了应用级别的保障机制（例如在节点资源压力下驱逐离线作业）。同时，CPU 和内存的隔离与抑制由**主机内核**（Host Kernel）在操作系统级别提供保障。需要注意的是，目前 Volcano Agent 仅适配 **openEuler 22.03 SP2** 及更高版本，因此使用该功能时请确保使用正确的操作系统类型和版本。
 
-In the egress network bandwidth isolation mechanism, the bandwidth usage of offline jobs is limited, especially when online jobs require more bandwidth. To achieve finer bandwidth control, three watermark parameters are typically defined to dynamically adjust the bandwidth allocation for offline jobs.
+### 出口网络带宽保障示例
 
-| Watermark | Description | Default Value |
-|---------|------------|---------------|
-| `onlineBandwidthWatermarkPercent` | The ratio of the online bandwidth watermark value to the node's base bandwidth.<br />`onlineBandwidthWatermark` = node base bandwidth × `onlineBandwidthWatermarkPercent` / 100 | 80 |
-| `offlineHighBandwidthPercent` | The ratio of the offline high bandwidth watermark value to the node's base bandwidth.<br />`offlineHighBandwidth` = node base bandwidth × `offlineHighBandwidthPercent` / 100.<br />Upper limit of bandwidth used by offline workloads when online usage is below `onlineBandwidthWatermarkPercent`.<br />Example: node = 100 Mbps, online = 80%, offline high = 40% → offline max = 40 Mbps | 40 |
-| `offlineLowBandwidthPercent` | The ratio of the offline low bandwidth watermark value to the node's base bandwidth.<br />`offlineLowBandwidth` = node base bandwidth × `offlineLowBandwidthPercent` / 100.<br />Upper limit of bandwidth used by offline workloads when online usage exceeds `onlineBandwidthWatermarkPercent`.<br />Example: node = 100 Mbps, online = 80%, offline low = 10% → offline max = 10 Mbps | 10 |
+在出口网络带宽隔离机制中，离线作业的带宽使用会受到限制，尤其是在在线作业需要更多带宽时。为了实现更精细的带宽控制，通常会定义三个水位线参数（Watermark Parameters），用于动态调整离线作业的带宽分配。
+
+<table>
+  <thead>
+    <tr>
+      <th style={{textAlign: 'center'}}>水位线</th>
+      <th style={{textAlign: 'center'}}>说明</th>
+      <th style={{textAlign: 'center'}}>默认值</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style={{textAlign: 'center'}}><code>onlineBandwidthWatermarkPercent</code></td>
+      <td style={{textAlign: 'center'}}>在线带宽水位线值与节点基础带宽的比值：<br /><code>onlineBandwidthWatermark</code> 值 = 节点基础带宽 * <code>onlineBandwidthWatermarkPercent</code> / 100</td>
+      <td style={{textAlign: 'center'}}>&nbsp;&nbsp;&nbsp;80&nbsp;&nbsp;&nbsp;</td>
+    </tr>
+    <tr>
+      <td style={{textAlign: 'center'}}><code>offlineHighBandwidthPercent</code></td>
+      <td style={{textAlign: 'center'}}>离线高带宽水位线值与节点基础带宽的比值：<br /><code>offlineHighBandwidth</code> 值 = 节点基础带宽 * <code>offlineHighBandwidthPercent</code> / 100<br />它表示当在线工作负载的带宽使用比例低于 <code>onlineBandwidthWatermarkPercent</code> 时，离线工作负载可使用的带宽上限。<br />例如：节点基础带宽 = 100Mbps，<code>onlineBandwidthWatermarkPercent</code> = 80，<code>offlineHighBandwidthPercent</code> = 40，当在线工作负载使用的带宽小于 100Mbps * 0.8 = 80Mbps 时，离线工作负载最多可以使用 100Mbps * 0.4 = 40Mbps 的带宽。</td>
+      <td style={{textAlign: 'center'}}>&nbsp;&nbsp;&nbsp;40&nbsp;&nbsp;&nbsp;</td>
+    </tr>
+    <tr>
+      <td style={{textAlign: 'center'}}><code>offlineLowBandwidthPercent</code></td>
+      <td style={{textAlign: 'center'}}>离线低带宽水位线值与节点基础带宽的比值：<br /><code>offlineLowBandwidth</code> 值 = 节点基础带宽 * <code>offlineLowBandwidthPercent</code> / 100<br />它表示当在线工作负载的带宽使用比例高于 <code>onlineBandwidthWatermarkPercent</code> 时，离线工作负载可使用的带宽上限。<br />例如：节点带宽 = 100Mbps，<code>onlineBandwidthWatermarkPercent</code> = 80，<code>offlineLowBandwidthPercent</code> = 10，当在线工作负载使用的带宽大于 100Mbps * 0.8 = 80Mbps 时，离线工作负载最多可以使用 100Mbps * 0.1 = 10Mbps 的带宽。</td>
+      <td style={{textAlign: 'center'}}>&nbsp;&nbsp;&nbsp;10&nbsp;&nbsp;&nbsp;</td>
+    </tr>
+  </tbody>
+</table>
 
 
-#### Setting Node Network Bandwidth
 
-This example demonstrates how online jobs suppress the entire network bandwidth of offline jobs. We will use the iperf tool to simulate the ingress bandwidth traffic of online and offline jobs.
 
-Add the annotation volcano.sh/network-bandwidth-rate to all nodes to specify the network bandwidth rate. The example sets the value to 1000Mbps. Please set an appropriate value based on your actual environment and replace $node with the actual node name.
+#### 设置节点网络带宽
+
+本示例将演示在线作业如何抑制离线作业的整个网络带宽。我们将使用 `iperf` 工具来模拟在线作业和离线作业的网络入口带宽流量。
+
+在所有节点上添加注解 `volcano.sh/network-bandwidth-rate`，以指定网络带宽速率。示例中设置的值为 `1000Mbps`，请根据实际环境设置合适的值，并替换 `$node` 为实际节点名称。
 
 ```bash
 kubectl annotate node $node_name volcano.sh/network-bandwidth-rate=1000
 ```
 
-#### Deploying Online and Offline Jobs
+#### 部署在线和离线作业
 
-Deploy an online and offline Deployment. Replace `$node_ip` with the node IP accessible to the Pod in your environment. Also, start the `iperf` server on the `$node_ip` node using the command `iperf -s` to ensure the Pod can access the `iperf` server.
+部署一个在线作业和离线作业deployment，请将 `$node_ip` 替换为在你的环境中Pod可以访问到的节点 IP。同时，请在 `$node_ip` 节点上使用命令 `iperf -s` 启动 `iperf` 服务器，以确保 Pod 可以访问 `iperf` 服务器。
 
 ```yaml
-# Online Job
+# 在线作业
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -399,7 +437,7 @@ spec:
       labels:
         app: online-iperf
       annotations:
-        volcano.sh/qos-level: "HLS" # Identify online jobs
+        volcano.sh/qos-level: "HLS" # 标识在线作业
     spec:
       containers:
       - name: container-1
@@ -408,11 +446,11 @@ spec:
         - /bin/sh
         - -c
         - |
-          iperf -c $node_ip -i 1 -t 30 -f mb # Simulate bandwidth consumption
+          iperf -c $node_ip -i 1 -t 30 -f mb # 模拟消耗带宽
           echo finished...
           sleep 1000000
 ---
-# Offline Job
+# 离线作业
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -428,7 +466,7 @@ spec:
       labels:
         app: offline-iperf
       annotations: 
-        volcano.sh/qos-level: "BE" # Identify offline jobs
+        volcano.sh/qos-level: "BE" # 标识离线作业
     spec:
       containers:
       - name: container-1
@@ -437,16 +475,16 @@ spec:
         - /bin/sh
         - -c
         - |
-          iperf -c $node_ip -i 1 -t 30 -f mb # Simulate bandwidth consumption
+          iperf -c $node_ip -i 1 -t 30 -f mb # 模拟消耗带宽
           echo finished...
           sleep 1000000
 ```
 
-#### Viewing Logs
+#### 查看日志
 
-View the logs of online and offline jobs:
+查看在线和离线作业日志:
 
-Online job logs:
+在线作业日志:
 
 ```bash
 Connecting to host 192.168.2.30, port 5201
@@ -462,7 +500,7 @@ Connecting to host 192.168.2.30, port 5201
 ...
 ```
 
-Offline job logs:
+离线作业日志:
 
 ```bash
 Connecting to host 192.168.2.30, port 5201
@@ -478,22 +516,22 @@ Connecting to host 192.168.2.30, port 5201
 ...
 ```
 
-We can see that when the bandwidth usage of online jobs exceeds the node's `onlineBandwidthWatermarkPercent` (default 80), offline jobs can only use about 10% of the bandwidth, indicating that when online jobs use network bandwidth beyond the watermark, the network bandwidth usage of offline jobs is suppressed to a lower value.
+可以看到，当在线作业使用的带宽资源超过整个节点的 `onlineBandwidthWatermarkPercent`即默认值80时，离线作业只能使用大约 10% 的带宽，表明在线作业使用超过水位线的网络带宽时，离线作业的网络带宽使用被压制在较低值。
 
-### Advanced Settings
+### 高级设置
 
-#### Feature Toggles
+#### 功能开关
 
-The colocation feature has a unified toggle on nodes. If a node has the label `volcano.sh/oversubscription=true` or `volcano.sh/colocation=true`, the colocation feature is enabled. You can remove these labels to disable all colocation features. When a node has these labels, all colocation features take effect.
+混部（Colocation）功能在节点上有一个统一的开关。如果节点具有标签 `volcano.sh/oversubscription=true` 或 `volcano.sh/colocation=true`，则表示混部功能已启用。你可以移除这两个标签以禁用所有混部功能。当节点具有这些标签时，所有混部功能才会生效。
 
-- If you only want to use the colocation feature for online and offline jobs without enabling resource oversubscription, simply set the node label `volcano.sh/colocation="true"`.
-- If you want to use both the colocation feature and resource oversubscription, set the node label `volcano.sh/oversubscription=true`.
+- 如果你只想使用在线作业和离线作业的混部功能，而不启用资源超卖（Resource Oversubscription），只需设置节点标签 `volcano.sh/colocation="true"`。
+- 如果你想同时使用混部功能和资源超卖功能，则应设置节点标签 `volcano.sh/oversubscription=true`。
 
-By default, the `volcano-agent-configuration` ConfigMap in the `volcano-system` namespace holds all configurations for the Volcano Agent.
+默认情况下，`volcano-system` 命名空间中的 `volcano-agent-configuration` ConfigMap 保存了 Volcano Agent 的所有配置。
 
-Each colocation feature (CPU Burst / Dynamic Resource Oversubscription / Egress Network Bandwidth Guarantee) has an independent toggle. You can enable or disable each feature by modifying the `volcano-agent-configuration` ConfigMap in the `volcano-system` namespace.
+每个混部功能（CPU Burst / 动态资源超卖 / 出口网络带宽保障）都有一个独立的开关。你可以通过修改 `volcano-system` 命名空间中的 `volcano-agent-configuration` ConfigMap 来启用或禁用每个功能。
 
-- Set the `enable` field to `true` to enable the CPU Burst feature, or `false` to disable it.
+- `enable` 字段的值为 `true` 表示启用 CPU Burst 功能，`false` 表示禁用该功能。
 
   ```json
   "cpuBurstConfig":{
@@ -501,7 +539,7 @@ Each colocation feature (CPU Burst / Dynamic Resource Oversubscription / Egress 
   }
   ```
 
-- Set the `enable` field to `true` to enable the dynamic resource oversubscription feature, or `false` to disable it.
+- `enable` 字段的值为 `true` 表示启用动态资源超卖功能，`false` 表示禁用该功能。
 
   ```json
   "overSubscriptionConfig":{
@@ -509,7 +547,9 @@ Each colocation feature (CPU Burst / Dynamic Resource Oversubscription / Egress 
   }
   ```
 
-- Set the `enable` field to `true` to enable the egress network bandwidth guarantee feature, or `false` to disable it.
+
+
+- `enable` 字段的值为 `true` 表示启用出口网络带宽保障功能，`false` 表示禁用该功能。
 
   ```json
   "networkQosConfig":{
@@ -519,19 +559,19 @@ Each colocation feature (CPU Burst / Dynamic Resource Oversubscription / Egress 
 
 #### CPU Burst
 
-For containers in Pods with the CPU Burst feature enabled, their CPU usage can burst up to the container's CPU limit (`cpu limit`). If multiple Pods use burst CPU resources simultaneously, CPU contention may occur, affecting the CFS (Completely Fair Scheduler) scheduling of the CPU.
+启用了 CPU Burst 功能的 Pod 中的容器，其 CPU 使用量最多可以突增到容器的 CPU 限制值（`cpu limit`）。如果多个 Pod 同时使用突增的 CPU 资源，可能会发生 CPU 争用，从而影响 CPU 的 CFS（完全公平调度器）调度。
 
-You can specify a custom burst quota by setting the Pod's annotation `volcano.sh/quota-burst-time`. For example:
+你可以通过设置 Pod 的注解 `volcano.sh/quota-burst-time` 来指定自定义的突增配额。例如：
 
-If a container's CPU limit is 4 cores, the Volcano Agent defaults the container's CGroup `cpu.cfs_quota_us` value to `400000` (the CFS base period is `100000`, so 4 cores correspond to `4 * 100000 = 400000`). This means the container can burst up to 4 additional CPU cores at a time. If you set `volcano.sh/quota-burst-time=200000`, the container can only burst up to 2 additional CPU cores at a time.
+如果一个容器的 CPU 限制为 4 核，Volcano Agent 默认会将容器的 CGroup `cpu.cfs_quota_us` 值设置为 `400000`（CFS 的基本周期为 `100000`，因此 4 核 CPU 对应 `4 * 100000 = 400000`）。这意味着容器在某一时刻最多可以额外使用 4 核 CPU。如果你设置 `volcano.sh/quota-burst-time=200000`，则表示容器在某一时刻最多只能额外使用 2 核 CPU。
 
-#### Dynamic Resource Oversubscription
+#### 动态资源超卖
 
-By default, the calculation of oversubscribed resources and the eviction of offline workloads only consider the resource usage of Pods on the node. If you want to consider the resource utilization of the node itself, set the Volcano agent's `--include-system-usage=true` flag.
+默认情况下，超卖资源的计算和离线工作负载的驱逐仅考虑节点上 Pod 的资源使用情况。如果您希望考虑节点本身的资源利用率，应设置 volcano agent 的 `--include-system-usage=true` 标志。
 
-To avoid excessive pressure on nodes, the Volcano agent sets an oversubscription ratio to determine the ratio of idle resource oversubscription. You can change this parameter by setting the `--oversubscription-ratio` flag. The default value is 60, meaning 60% of idle resources will be oversubscribed. If you set `--oversubscription-ratio=100`, all idle resources will be oversubscribed.
+为了避免对节点造成过大压力，volcano agent 设置了一个超卖比例来确定空闲资源的超卖比例。您可以通过设置 `--oversubscription-ratio` 标志来更改此参数，默认值为 60，表示 60% 的空闲资源将被超卖。如果您设置 `--oversubscription-ratio=100`，则表示所有空闲资源都将被超卖。
 
-When a node is under pressure, the Volcano agent evicts offline workloads. The eviction threshold can be configured via the `volcano-agent-configuration` ConfigMap. `"evictingCPUHighWatermark":80` means eviction will occur when the node's CPU utilization exceeds 80% for a period, and the node cannot schedule new Pods during eviction. `"evictingCPULowWatermark":30` means the node will resume scheduling when the CPU utilization drops below 30%. `evictingMemoryHighWatermark` and `evictingMemoryLowWatermark` have the same meaning but apply to memory resources.
+当节点有压力时，volcano agent 会驱逐离线工作负载。驱逐阈值可以通过 configMap `volcano-agent-configuration` 进行配置。`"evictingCPUHighWatermark":80` 表示当节点的 CPU 利用率在一段时间内超过 80% 时，将触发离线作业驱逐，并且在驱逐期间当前节点无法调度新的 Pod。`"evictingCPULowWatermark":30` 表示当节点的 CPU 利用率低于 30% 时，节点将恢复调度。`evictingMemoryHighWatermark` 和 `evictingMemoryLowWatermark` 的含义相同，但针对内存资源。
 
 ```json
 "evictingConfig":{
@@ -542,9 +582,9 @@ When a node is under pressure, the Volcano agent evicts offline workloads. The e
 }
 ```
 
-#### Egress Network Bandwidth Guarantee
+#### 出口网络带宽保障
 
-You can adjust the online and offline bandwidth watermarks by modifying the `volcano-agent-configuration` ConfigMap. `qosCheckInterval` represents the interval for monitoring bandwidth watermarks by the Volcano agent. Be cautious when modifying this value.
+你可以通过修改 configMap `volcano-agent-configuration` 来调整在线和离线带宽的水位线（watermark）。`qosCheckInterval` 表示 volcano agent 监控带宽水位线的时间间隔，请谨慎修改此值。
 
 ```json
 "networkQosConfig":{  
@@ -556,6 +596,6 @@ You can adjust the online and offline bandwidth watermarks by modifying the `vol
  }
 ```
 
-#### Custom Oversubscription Policy Development
+#### 自定义开发超卖策略
 
-The Volcano agent defaults to using the [extend](https://github.com/volcano-sh/volcano/tree/master/pkg/agent/oversubscription/policy) method to report and use oversubscribed resources, i.e., reporting oversubscribed resources as an extended resource type to the node. If you want to customize the reporting and usage of oversubscribed resources, such as reporting them as native CPU and memory resources, and customize suspension and resumption of scheduling behaviors, implement the [policy Interface](https://github.com/volcano-sh/volcano/blob/4dea29b334877058786615ac1ed79143601dc600/pkg/agent/oversubscription/policy/policy.go#L48) to develop a custom oversubscription policy, and set the Volcano agent's startup parameter `oversubscription-policy` to the corresponding policy.
+Volcano agent默认使用[extend]([volcano/pkg/agent/oversubscription/policy at master · volcano-sh/volcano (github.com)](https://github.com/volcano-sh/volcano/tree/master/pkg/agent/oversubscription/policy))的方式上报和使用超卖资源，也就是将超卖资源作为一种扩展资源类型上报到节点，如果想自定义超卖资源的上报和使用，如上报为原生的cpu和memory资源，以及暂停和恢复调度的行为，请实现[policy Interface](https://github.com/volcano-sh/volcano/blob/4dea29b334877058786615ac1ed79143601dc600/pkg/agent/oversubscription/policy/policy.go#L48)实现自定义的超卖策略开发，并设置Volcano agent的启动参数`oversubscription-policy`为相应的策略。

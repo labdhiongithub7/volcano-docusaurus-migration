@@ -2,28 +2,25 @@
 title: "Flink on Volcano"
 sidebar_position: 1
 ---
+### Flink简介
 
+Apache Flink是由Apache软件基金会开发的开源流处理框架，其核心是用Java和Scala编写的分布式流数据流引擎。Flink以数据并行和流水线方式执行任意流数据程序，Flink的流水线运行时系统可以执行批处理和流处理程序。此外，Flink的运行时本身也支持迭代算法的执行。
 
+### 前提条件
 
-### Flink introduction
+需要已经部署创建好CCE集群，集群下至少有一个可用节点，集群内节点已经绑定了弹性公网IP、kubectl命令行工具。
 
-Apache Flink is an open-source streaming framework developed by the Apache Software Foundation. At its core, Apache Flink is a distributed streaming data streaming engine written in Java and Scala. Flink executes any stream data program in data parallelism and pipelining. Flink's pipelined runtime system can execute both batch and stream programs. In addition, the Flink runtime itself supports the execution of iterative algorithms.
-
-### The premise condition
-
-Make sure the deployed Kubernetes, Kubectl, Volcano are installed correctly.
-
-### Deployment process
+### 部署流程
 
 ##### 1. Download
 
-To run Flink, which requires a Java 8 or 11 environment, use the following instructions to determine the Java version.
+为了运行Flink，需要java8或11的环境，使用如下的指令确定java的版本。
 
 ```bash
 java -version
 ```
 
-Download the package and go to the directory.
+下载软件包并且进入目录下。
 
 ```
 $ wget https://www.apache.org/dyn/closer.lua/flink/flink-1.12.2/flink-1.12.2-src.tgz
@@ -32,7 +29,7 @@ $ cd flink-1.12.2
 
 ##### 2. Start a Cluster
 
-Running the script completes the deployment of Flink on the cluster.
+运行脚本完成flink在集群上的部署。
 
 ```bash
 $ ./bin/start-cluster.sh
@@ -40,7 +37,7 @@ $ ./bin/start-cluster.sh
 
 ##### 3. Submit a job
 
-Submit the job using the following instructions.
+随后可以使用如下的指令提交作业。
 
 ```bash
 $ ./bin/flink run examples/streaming/WordCount.jar
@@ -49,9 +46,9 @@ $ tail log/flink-*-taskexecutor-*.out
 
 ### Flink on Volcano
 
-##### 1. The deployment of the component
+##### 1. 部署组件
 
-Deploying a Flink Cluster requires creating two deploys, a Service, and a ConfigMap. The scheduling strategy is Volcano.The contents of `flink-configuration-configmap.yaml` are shown below.
+Flink cluster的部署需要创建两个deploy、一个service和一个configmap。调度策略采用volcano。`flink-configuration-configmap.yaml`内容如下
 
 ```
 apiVersion: v1
@@ -118,7 +115,7 @@ data:
     logger.netty.level = OFF
 ```
 
-Service is used to provide services for the REST and UI ports of the JobManager.The contents of `jobManager-Service.yaml` are as follows.
+service用来提供JobManager的REST和UI端口的服务，jobmanager-service.yaml内容如下
 
 ```
 apiVersion: v1
@@ -139,7 +136,7 @@ spec:
     component: jobmanager
 ```
 
-The contents of `jobmanager-session-deployment.yaml` are as follows.
+jobmanager-session-deployment.yaml内容如下
 
 ```
 apiVersion: apps/v1
@@ -190,7 +187,7 @@ spec:
             path: log4j-console.properties
 ```
 
-The contents of  `taskmanager-session-deployment.yaml` are as follows.
+taskmanager-session-deployment.yaml内容如下
 
 ```
 apiVersion: apps/v1
@@ -239,7 +236,7 @@ spec:
             path: log4j-console.properties
 ```
 
-Create the above four YAML configuration files on the cluster node and deploy them using the following instructions.
+在集群节点创建好上面四个yaml配置文件，使用如下指令进行部署。
 
 ```
 kubectl create -f flink-configuration-configmap.yaml
@@ -248,7 +245,7 @@ kubectl create -f jobmanager-session-deployment.yaml
 kubectl create -f taskmanager-session-deployment.yaml
 ```
 
-Query to see if the payload was successfully created：
+创建成功后查询：
 
 ```
 kubectl get cm| grep flink
@@ -256,11 +253,11 @@ kubectl get svc | grep flink
 kubectl get pod -owide | grep Flink
 ```
 
-##### 2. Outward publishing service
+##### 2. 对外发布服务
 
-Once the Flink payload is created, you need to publish the service externally。
+创建好flink负载之后，需要像外部发布服务。
 
-- If you use Huawei Cloud CCE for testing, go to the "Workloads - Stateless Loads" page of CCE. Select Flink-JobManager and click Access Mode.
-- Click "Add Service", select node access, and enter container port bit 8081.
-- Click Network Management in CCE, you can see the service we just added, and visit the link for external publication.
-- Go to the Dashboard page of Flink and click Submit New Job to submit the task. Here you have the option to submit an officially-provided WordCount sample.The directory is `flink-1.12.2/examples/streaming/WordCount.jar`
+- 若使用华为云CCE进行测试，进入CCE的"工作负载-无状态负载"页面。选择flink-jobmanager，单击"访问方式"。
+- 点击“添加service”，选择节点访问，输入容器端口位8081。
+- 点击CCE中的网络管理，能够看到刚才我们添加的service，访问对外发布的链接。
+- 进入flink的Dashboard页面，点击submit new job提交任务官方的WordCount作业。目录为flink-1.12.2/examples/streaming/WordCount.jar。

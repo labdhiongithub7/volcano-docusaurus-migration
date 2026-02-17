@@ -3,10 +3,6 @@ title: "Kubeflow on Volcano"
 sidebar_position: 2
 ---
 
-
-
-
-
 ### Kubeflow introduction
 
 Kubernetes has become the de facto standard for cloud native application choreography and management, and more and more applications are migrating to Kubernetes. The field of artificial intelligence and machine learning naturally contains a large number of computation-intensive tasks. Developers are very willing to build an AI platform based on Kubernetes and make full use of the resource management, application scheduling, operation and maintenance monitoring capabilities provided by Kubernetes. However, it is a very complicated and tedious process to build an end-to-end AI computing platform based on Kubernetes, which needs to deal with many links. In addition to the model training we are familiar with, it also includes data collection, preprocessing, resource management, feature extraction, data verification, model management, model release, monitoring and other links. For an AI algorithm engineer, if he wants to do model training, he has to build a set of AI computing platform. This process is time-consuming and laborious, and requires a lot of knowledge accumulation[1].

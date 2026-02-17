@@ -2,26 +2,24 @@
 title: "TensorFlow on Volcano"
 sidebar_position: 7
 ---
+### TensorFlow简介
 
-
-### TensorFlow introduction
-
-TensorFlow is a symbolic mathematical system based on data flow programming, which is widely used in programming and realization of various machine learning algorithms. Its predecessor is DistBelief, a neural network algorithm library of Google.
+TensorFlow是一个基于数据流编程的符号数学系统，被广泛应用于各类机器学习算法的编程实现，其前身是谷歌的神经网络算法库DistBelief。
 
 ### TensorFlow on Volcano
 
-PS-worker model: Parameter Server performs model-related services, Work Server trains related services, inference calculation, gradient calculation, etc[1].
+PS-worker模型：Parameter Server执行模型相关业务，Work Server训练相关业务，推理计算、梯度计算等[1]。
 
 ![ps-worker](/img/doc/ps-worker.png)
 
-TensorFlow on Kubernetes has many problems:
+TensorFlow on Kubernetes存在诸多的问题
 
-- Resource isolation.
-- Lack of GPU scheduling, Gang Schuler.
-- Process Legacy.
-- Training log is not convenient to save.
+- 资源隔离
+- 缺乏GPU调度、Gang schduler。
+- 进程遗留问题
+- 训练日志保存不方便
 
-Create `tftest.yaml`.
+创建tftest.yaml
 
 ```
 apiVersion: batch.volcano.sh/v1alpha1
@@ -84,13 +82,13 @@ spec:
           restartPolicy: Never
 ```
 
-Deploy `tftest.yaml`.
+部署tftest.yaml
 
 ```
 kubectl apply -f tftest.yaml
 ```
 
-View job health.
+查看作业运行情况
 
 ```
 kubectl get pod

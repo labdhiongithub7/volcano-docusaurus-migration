@@ -1,146 +1,163 @@
 ---
-title: Plugins
-sidebar_label: Plugins
+title: "Plugins"
 sidebar_position: 3
----
+--- 
 
 ### Gang
 
 ![gang plugin](/img/doc/gang.png)
 
-#### Overview
+#### 简介
 
-The Gang scheduling strategy is one of the core scheduling algorithms of the Volcano-Scheduler. It meets the scheduling requirements of "All or nothing" in the scheduling process and avoids the waste of cluster resources caused by arbitrary scheduling of Pod. The Gang scheduler algorithm is to observe whether the scheduled number of Pods under Job meets the minimum number of runs. When the minimum number of runs of Job is satisfied, the scheduling action is executed for all Pods under Job; otherwise, it is not executed.
+Gang调度策略是volcano-scheduler的核心调度算法之一，它满足了调度过程中的“All or nothing”的调度需求，避免Pod的任意调度导致集群资源的浪费。具体算法是，观察Job下的Pod已调度数量是否满足了最小运行数量，当Job的最小运行数量得到满足时，为Job下的所有Pod执行调度动作，否则，不执行。
 
-#### Scenario
+#### 场景
 
-The Gang scheduling algorithm based on the container group concept is well suited for scenarios that require multi-process collaboration. AI scenes often contain complex processes. Data Ingestion, Data Analysts, Data Splitting, trainers, Serving, Logging, etc., which require a group of containers to work together, are suitable for container-based Gang scheduling strategies. Multi-thread parallel computing communication scenarios under MPI computing framework are also suitable for Gang scheduling because master and slave processes need to work together. Containers under the container group are highly correlated, and there may be resource contention. The overall scheduling allocation can effectively solve the deadlock.
+基于容器组概念的Gang调度算法十分适合需要多进程协作的场景。AI场景往往包含复杂的流程，Data Ingestion、Data Analysts、Data Splitting、Trainer、Serving、Logging等，需要一组容器进行协同工作，就很适合基于容器组的Gang调度策略。MPI计算框架下的多线程并行计算通信场景，由于需要主从进程协同工作，也非常适合使用Gang调度策略。容器组下的容器高度相关也可能存在资源争抢，整体调度分配，能够有效解决死锁。
 
-In the case of insufficient cluster resources, the scheduling strategy of Gang can significantly improve the utilization of cluster resources.
+在集群资源不足的场景下，gang的调度策略对于集群资源的利用率的提升是非常明显的。
+
+
 
 ### Binpack
 
-#### Overview
+#### 简介
 
-The goal of the BinPack scheduling algorithm is to fill as many existing nodes as possible (try not to allocate blank nodes). In the concrete implementation, BinPack scheduling algorithm scores the nodes that can be delivered, and the higher the score, the higher the resource utilization rate of nodes. Binpack algorithm can fill up the nodes as much as possible to close the application load to some nodes, which is very conducive to the automatic expansion capacity function of K8s cluster nodes.
+binpack调度算法的目标是尽量把已有的节点填满（尽量不往空白节点分配）。具体实现上，binpack调度算法是给可以投递的节点打分，分数越高表示节点的资源利用率越高。binpack算法能够尽可能填满节点，将应用负载靠拢在部分节点，这非常有利于K8S集群节点的自动扩缩容功能。
 
-The BinPack algorithm is injected into the Volcano-Scheduler process as a plug-in and will be applied during the Pod stage of node selection. When calculating the Binpack algorithm, the Volcano-Scheduler considers the various resources requested by Pod and averages them according to the weights configured for each resource. The weight of each resource in the node score calculation is different, depending on the weight value configured by the administrator for each resource. Different plug-ins also need to assign different weights when calculating node scores, and the Scheduler also sets the score weights for BinPack plugins.
+Binpack算法以插件的形式，注入到volcano-scheduler调度过程中，将会应用在Pod优选节点的阶段。Volcano-scheduler在计算binpack算法时，会考虑Pod请求的各种资源，并根据各种资源所配置的权重做平均。每种资源在节点分值计算过程中的权重并不一样，这取决于管理员为每种资源配置的权重值。同时不同的插件在计算节点分数时，也需要分配不同的权重，scheduler也为binpack插件设置了分数权重。
 
-#### Scenario
+#### 场景
 
-The BinPack algorithm is good for small jobs that can fill as many nodes as possible. For example, the single query job in the big data scene, the order generation in the e-commerce seckill scene, the single identification job in the AI scene, and the high concurrency service scene on the Internet, etc. This scheduling algorithm can reduce the fragmentation in the node as much as possible, and reserve enough resource space on the idle machine for Pod which has applied for more resource requests, so as to maximize the utilization of idle resources under the cluster.
+binpack算法对能够尽可能填满节点的小作业有利。例如大数据场景下的单次查询作业、电商秒杀场景订单生成、AI场景的单次识别作业以及互联网高并发的服务场景等。这种调度算法能够尽可能减小节点内的碎片，在空闲的机器上为申请了更大资源请求的Pod预留足够的资源空间，使集群下空闲资源得到最大化的利用。
+
+
 
 ### Priority
 
-![fair-share调度](/img/doc/fair-share.png)  
+![fair-share调度](/img/doc/fair-share.png)
 
-#### Overview
+#### 简介
 
-The Priority Plugin provides the implementation of job, Task sorting, and PreempTablefn, a function that calculates sacrifice jobs. Job sorting according to priorityClassName, the task of sorting by priorityClassName, createTime, id in turn.
+Priority plugin提供了job、task排序的实现，以及计算牺牲作业的函数preemptableFn。job的排序根据priorityClassName，task的排序依次根据priorityClassName、createTime、id。
 
-#### Scenario
+#### 场景
 
-When the cluster runs multiple jobs but is low on resources, and each Job has a different number of Pods waiting to be scheduled, if you use the Kubernetes default scheduler, the Job with more Pods will eventually get more of the cluster's resources. In this case, the Volcano-Scheduler provides algorithms that enable different jobs to share cluster resources in a fair-share.
+当集群运行了多个Job，但资源不足，并且每个Job下有不等数量的Pod等待被调度的时候，如果使用Kubernetes默认调度器，那么最终，具有更多Pod数量的Job将分得更多的集群资源。在这种情况下，volcano-scheduler提供算法支持不同的Job以fair-share的形式共享集群资源。
 
-The Priority Plugin enables users to customize their job and task priorities, and to customize scheduling policies at different levels according to their own needs. Priority is arranged according to Job's PriorityClassName at the application level. For example, there are financial scenarios, Internet of Things monitoring scenarios and other applications requiring high real-time performance in the cluster, and the Priority Plugin can ensure that they are scheduled in Priority.
+Priority plugin能够让用户自定义job、task优先级，根据自己的需求在不同层次来定制调度策略。根据job的priorityClassName在应用层面进行优先级排序，例如集群中有金融场景、物联网监控场景等需要较高实时性的应用，Priority plugin能够保证其优先得到调度。
+
+
 
 ### DRF
+![drf plugin](/img/doc/drfjob.png)
+#### 简介
 
-![Drf plugin](/img/doc/drfjob.png)
+DRF调度算法的全称是Dominant Resource Fairness，是基于容器组Dominant Resource的调度算法。volcano-scheduler观察每个Job请求的主导资源，并将其作为对集群资源使用的一种度量，根据Job的主导资源，计算Job的share值，在调度的过程中，具有较低share值的Job将具有更高的调度优先级。这样能够满足更多的作业，不会因为一个胖业务，饿死大批小业务。DRF调度算法能够确保在多种类型资源共存的环境下,尽可能满足分配的公平原则。
 
-#### Overview
+#### 场景
 
-The full name of DRF scheduling algorithm is Dominant Resource Fairness, which is a scheduling algorithm based on the container group Dominant Resource. Dominant Resource is the largest percentage of all required resources for a container group. The DRF algorithm selects the Dominant Resource that is the smallest in a series of container groups for priority scheduling. This can meet more job, not because a fat business, starve a large number of small business. DRF scheduling algorithm can ensure that many types of resources coexist in the environment, as far as possible to meet the fair principle of allocation.
+DRF调度算法优先考虑集群中业务的吞吐量，适用单次AI训练、单次大数据计算以及查询等批处理小业务场景。
 
-#### Scenario
 
-The DRF scheduling algorithm gives priority to the throughput of the business in the cluster and is suitable for batch small business scenarios such as a single AI training, a single big data calculation and a query.
 
 ### Proportion
 
-#### Overview
+#### 简介
+Proportion调度算法是使用queue的概念，用来控制集群总资源的分配比例。每一个queue分配到的集群资源比例是一定的。举例来说，有3个团队，共享一个集群上的资源池：A团队最多使用总集群的40%，B团队最多使用30%，C团队最多使用30%。如果投递的作业量超过团队最大可用资源，就需要排队。
 
-Proportion scheduling algorithm uses the concept of queue to control the Proportion of total resources allocated in the cluster. Each queue allocates a certain proportion of cluster resources. For example, there are three teams that share A pool of resources on A cluster: Team A uses up to 40% of the total cluster, Team B uses up to 30%, and Team C uses up to 30%. If the amount of work delivered exceeds the team's maximum available resources, there is a queue.
+#### 场景
 
-#### Scenario
+Proportion调度算法为集群的调度带来了弹性、灵活性上面的提升。最典型的场景就是在一个公司的多个开发团队，共用一个集群的时候，这种调度算法能够很好的处理不同部门之间的共享资源配比和隔离的需求。在多业务混合场景，如计算密集型的AI业务，网络IO密集型的MPI、HPC业务，存储密集型的大数据业务，Proportion调度算法通过配比，能很好的按需分配共享资源。
 
-Proportion scheduling algorithm improves the flexibility and elasticity of cluster scheduling. The most typical scenario is that when multiple development teams in a company share a cluster, this scheduling algorithm can handle the requirements of shared resource matching and isolation between different departments very well. In multi-service mixed scenarios, such as computation-intensive AI business, network IO-intensive MPI and HPC business, and storage-intensive big data business, Proportion scheduling algorithm can allocate shared resources according to demand through matching.
+
 
 ### Task-topology
 
-#### Overview
+#### 简介
 
-The task-topology algorithm is an algorithm that computes the priority of tasks and nodes based on the affinity and anti-affinity configuration between tasks within a Job. By configuring the affinity and anti-affinity policies between tasks within the Job and using the Task-Topology algorithm, tasks with affinity configurations can be scheduled to the same node first, and PODs with anti-affinity configurations to different nodes.
+Task-topology算法是一种根据Job内task之间亲和性和反亲和性配置计算task优先级和Node优先级的算法。通过在Job内配置task之间的亲和性和反亲和性策略，并使用task-topology算法，可优先将具有亲和性配置的task调度到同一个节点上，将具有反亲和性配置的Pod调度到不同的节点上。
 
-#### Scenario
+#### 场景
 
 node affinity：
 
-- Task-topology is important for improving computational efficiency in deep learning computing scenarios. Using the TensorFlow calculation as an example, configure the affinity between "ps" and "worker". Task-topology algorithm enables "ps" and "worker" to be scheduled to the same node as far as possible, so as to improve the efficiency of network and data interaction between "ps" and "worker", thus improving the computing efficiency.
-- Tasks in HPC and MPI scenarios are highly synchronized and need high-speed network IO.
+- Task-topology对于提升深度学习计算场景下的计算效率非常重要。以TensorFlow计算为例，配置“ps”和“worker”之间的亲和性。Task-topology算法，可使“ps”和“worker”尽量调度到同一台节点上，从而提升“ps”和“worker”之间进行网络和数据交互的效率，进而提升计算效率。
+- HPC、MPI场景下task之间具有高度同步性，需要高速的网络IO。
 
 Anti-affinity：
 
-- Take the TensorFlow calculation as an example, the anti-affinity between "ps" and "ps"
+- 以TensorFlow计算为例，“ps”与“ps”之间的反亲和性。
+- 电商服务场景的主从备份，数据容灾，保证一个作业挂掉之后有备用作业继续提供服务。
 
-- Master and slave backup of e-commerce service scene, data disaster tolerant, to ensure that there are spare jobs to continue to provide service after a job fails.
 
-### Predicates
 
-#### Overview
+### Predicates   
 
-The Predicate Plugin calls the PredicateGPU with pod and nodeInfo as parameters to evaluate and pre-select jobs based on the results.
+#### 简介
 
-#### Scenario
+Predicate plugin通过pod、nodeInfo作为参数，调用predicateGPU，根据计算结果对作业进行评估预选。
 
-In AI scenarios where GPU resources are required, the Predicate Plugin can quickly filter out those that require the GPU for centralized scheduling.
+#### 场景
 
-### Nodeorder
+在AI的应用场景下，GPU资源是必需，Predicate plugin可以快速筛选出来需要GPU的进行集中调度。
 
-#### Overview
 
-The NodeOrder Plugin is a scheduling optimization strategy that scores nodes from various dimensions through simulated assignments to find the node that is best suited for the current job. The scoring parameters are configured by the user. The parameter contains the Affinity、reqResource、LeastReqResource、MostResource、balanceReqResouce.
 
-#### Scenario
+### Nodeorder                                                                                                                                                                                                                                                                           
 
-NodeOrder Plugin provides scoring criteria of multiple dimensions for scheduling, and the combination of different dimensions enables users to flexibly configure appropriate scheduling policies according to their own needs.
+#### 简介
+
+Nodeorder plugin是一种调度优选策略：通过模拟分配从各个维度为node打分，找到最适合当前作业的node。打分参数由用户来配置。参数包含了Affinity、reqResource，、LeastReqResource、MostReqResource、balanceReqResouce。
+
+#### 场景
+
+Nodeorder plugin给调度提供了多个维度的打分标准，不同维度的组合，能够让用户根据自身需求灵活的配置合适的调度策略。
+
+
 
 ### SLA
 
-#### Overview
+#### 简介
 
-When users apply jobs to Volcano, they may need adding some particular constraints to job, for example, longest Pending time aiming to prevent job from starving. And these constraints can be regarded as Service Level Agreement (SLA) which are agreed between volcano and user. So sla plugin is provided to receive and realize SLA settings for both individual job and whole cluster.
+SLA的全称是Service Level agreement。用户向volcano提交job的时候，可能会给job增加特殊的约束，例如最长等待时间(JobWaitingTime)。这些约束条件可以视为用户与volcano之间的服务协议。SLA plugin可以为单个作业/整个集群接收或者发送SLA参数。
 
-#### Scenario
+#### 场景
 
-Users can customize SLA related parameters in their own cluster according to business needs. For example, for clusters with high real-time service requirements, JobWaitingTime can be set as small as possible. For clusters with bulk computing jobs, JobWaitingTime can be set to larger. The parameters of a specific SLA and the optimization of the parameters need to be combined with the specific business and related performance measurement results.
+根据业务的需要用户可以在自己的集群定制SLA相关参数。例如实时性服务要求较高的集群，JobWaitingTime可以设置的尽量小。批量计算作业为主的集群，JobWaitingTime可以设置较大。具体SLA的参数以及参数的优化需要结合具体的业务以及相关的性能测评结果。
 
-### TDM
 
-#### Overview
 
-The full name of TDM is Time Division Multiplexing. In a co-located environment, some nodes are in both Kubernetes cluster and Yarn cluster. For these nodes, Kubernetes and Yarn cluster can use these resource by time-sharing multiplexing.The TDM Plugin marks these nodes as `revocable nodes`. TDM plugin will try to dispatch `preemptable task` to `revocable node` in node revocable time and evict the `preemptable task` from `revocable node` out of revocable time.. TDM Plugin improves the time-division multiplexing ability of node resources in the scheduling process of Volcano.
+### Tdm
 
-#### Scenario
+#### 简介
 
-In ToB business, cloud vendors provide cloud-based resources for merchants, and different merchants adopt different container arrangement frameworks (Kubernetes/YARN, etc.). TDM Plugin improves the time-sharing efficiency of common node resources and further improves the utilization rate of resources.
+Tdm的全称是Time Division Multiplexing。在一些场景中，一些节点既属于Kubernetes集群也属于Yarn集群。Tdm plugin 需要管理员为这些节点标记为`revocable node`。Tdm plugin会在该类节点可被撤销的时间段内尝试把`preemptable task`调度给`revocable node`，并在该时间段之外清除`revocable node`上的`preemptable task`。Tdm plugin提高了volcano在调度过程中节点资源的分时复用能力。
+
+#### 场景
+
+适用于ToB业务中，云厂商为商家提供云化资源，不同的商家采取不同的容器编排框架(Kubernetes/Yarn等)，Tdm plugin提高公共节点资源的分时使用效率，进一步提升资源的利用率。
+
+
 
 ### Numa-aware
 
-#### Overview
+#### 简介
 
-When the node runs many CPU-bound pods, the workload can move to different CPU cores depending on whether the pod is throttled and which CPU cores are available at scheduling time. Many workloads are not sensitive to this migration and thus work fine without any intervention. However, in workloads where CPU cache affinity and scheduling latency significantly affect workload performance, the kubelet allows alternative CPU management policies to determine some placement preferences on the node.
+当节点运行多个cpu密集的pod。基于pod是否可以迁移cpu已经调度周期cpu资源状况，工作负载可以迁移到不同的cpu核心下。许多工作负载对cpu资源迁移并不敏感。然而，有一些cpu的缓存亲和度以及调度延迟显著影响性能的工作负载，kubelet允许可选的cpu编排策略(cpu management)来确定节点上cpu资源的绑定分配。
 
-The CPU Manager and the Topology Manager are all Kubelet components, However There is the following limitation:
+cpu manager以及topology manager都是kubelet的组件，它存在如下局限：
 
-- The scheduler is not topology-aware. so it is possible to be scheduled on a node and then fail on the node due to the Topology Manager. this is unacceptable for TensorFlow job. If any worker or ps failed on node, the job will fail.
-- The managers are node-level that results in an inability to match the best node for NUMA topology in the whole cluster.
+- 基于kubelet的调度组件不支持topology-aware。所以可能由于Topology manager，导致整个node上的调度失败。这对Tensorflow job是难以接受的，因为一旦有任何worker task挂掉，整个作业都将调度失败。
+- 这些manager是节点级这导致无法在整个集群中匹配numa topology的最佳节点。
 
-The Numa-Aware Plugin aims to address these limitations.
+Numa-aware plugin致力于解决如上局限。
 
-- Support cpu resource topology scheduling.
-- Support pod-level topology policies.
+- 支持cpu资源的拓扑调度。
+- 支持pod级别的拓扑协议。
 
-#### Scenario
+#### 场景
 
-Common scenarios for NUMA-Aware are computation-intensive jobs that are sensitive to CPU parameters, scheduling delays. Such as scientific calculation, video decoding, animation rendering, big data offline processing and other specific scenes.
+Numa-aware的常见场景是那些对cpu参数敏感\调度延迟敏感的计算密集型作业。如科学计算、视频解码、动漫动画渲染、大数据离线处理等具体场景。
+
+

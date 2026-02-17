@@ -1,74 +1,75 @@
 ---
-title: "Recommended Configurations for Common Scenarios"
+title: "常见场景推介配置"
 sidebar_position: 4
 ---
 
 
 
-### Background
+### 背景
 
-![AI development process](/img/doc/ai1.png) 
+![AI开发流程](/img/doc/ai1.png) 
 
-Deep learning generally involves four stages: data acquisition and processing, model training and evolution, model deployment, and model evaluation [1]. At the beginning of an enterprise's involvement in deep learning, due to the lack of relevant experience and resources for deep learning, the team members usually choose to complete the above steps manually step by step in order to quickly meet the immediate needs of the project development period. However, no matter how domain-specific a deep learning expert may have, scaling up a project without the support of an infrastructure platform becomes extremely difficult. Large-scale operations in a production environment require more rapid replication and iterative upgrades than local operations. Production environment has higher requirements for reliability of data, reproducibility of model training, scalability of training model, reliability of automated deployment and operation and maintenance. Therefore, when the enterprise grows to a certain scale, the enterprise will want to build a stable scientific computing platform, so that the upper business personnel can focus on algorithm optimization and business development.
+深度学习大致将涉及数据获取和处理、模型训练和演进、模型部署、模型评测四个阶段[1]。一个企业开始涉猎深度学习之初，因团队缺乏深度学习的相关经验和资源，通常，团队人员选择手工逐步完成上述步骤，以期快速满足项目发展期的即时需求。然而，不管深度学习专家具有多么专业的领域内知识，没有基础设施平台的支撑，项目规模的扩大都变得异常困难。相较于作业的本地运行，生产环境的大规模运行，对产品的快速复制和迭代升级要求更高。生产环境对数据的可靠性，模型训练的可复现，训练模型的扩展性，自动化部署以及运维的可靠性有更高的要求。从而，当企业发展到一定的规模，企业将希望构建稳定的科学计算平台，从而让上层业务人员能够专注于算法优化和业务的发展。
 
-In general, the construction of a deep learning platform will encounter many challenges, mainly reflected in the following aspects:
+通常，深度学习平台的搭建，将遇到诸多挑战，主要体现在以下方面：
 
-- Data management automation
-- The efficient use of resources
-- Mask the complexity of the underlying technology
+- 数据管理自动化
+- 资源的有效利用
+- 屏蔽底层技术的复杂性
 
 
 
-##### Data management
+##### 数据管理
 
-In a business scenario of deep learning, practitioners spend a significant amount of time capturing and transforming the data needed to build the model. As business scenarios expand, the automation of data transformation becomes a bottleneck in the efficiency of model building. In the process of data processing, new data will be generated, and these data will not only be used for this training, but also for the subsequent reasoning process. And the newly generated data does not need to be passed to the data source, but instead wants to be placed in a new storage space. This requires the underlying platform to provide a scalable storage system. Flexible, extensible and secure data storage system will greatly promote the improvement of data management ability.
+在深度学习的业务场景中，从业人员会花费大量的时间获取和转换建立模型需要的数据。随着业务场景的扩张，数据转换的自动化成为模型构建的效率的瓶颈。数据处理过程中还将产生新的数据，这些数据不单单应用于本次训练，很可能用于后续推理过程。并且新 生成的数据不需要传给数据源，而是希望放置在新的存储空间。这需要基础平台提供可扩展的存储系统。灵活、可扩展且安全的数据存储系统将极大的促进数据管理能力的提升。
 
-##### The efficient use of resources
+##### 资源的有效利用
 
-Deep learning-related applications are resource-intensive, and the use of resources fluctuates greatly, with peaks and valleys. Fast access to computing resources when the application starts running; At the end of the application, it is very important to recycle the unsuitable computing resources for the improvement of resource utilization. The types and time of computing resources used in data processing, model training and reasoning are different, which requires a flexible resource supply mechanism provided by the computing platform. Deep learning tasks require a large amount of computing resources, so it is impossible to build computing resources for each user separately. The computing platform should be able to guarantee the multi-lease of resource use, allowing multiple users to use the computing resource pool at the same time, rather than being monopolized by a few users.
+深度学习相关的应用是资源密集型，资源使用波动大，存在峰值和谷值。在应用开始运行的时候，快速获取计算资源；在应用结束后，回收不适用的计算资源对于资源利用率的提升相当重要。数据处理、模型训练和推理所使用的计算资源类型和资源占用时间有所不同，这就需要计算平台提供弹性的资源供应机制。深度学习任务需要占用大量的计算资源，不可能为每个用户单独构建计算资源，计算平台应该能保证资源使用的多租性，允许多个用户同时使用计算资源池，而不是被少数用户独占。
 
-##### Shield the underlying technical complexity
+##### 屏蔽底层技术复杂性
 
-AI practitioners focus on model building and product development, ignoring the importance of infrastructure to AI development. Machine Learning/Deep Learning's own growing technology stack of users includes computing frameworks for machine learning such as TensorFlow, the Spark data processing engine, and underlying drivers such as CUDA. Manually managing these dependencies can consume significant resources and effort on the part of practitioners.
+AI的从业人员专注于模型构建和产品研发，忽略基础设施架构对于AI的发展非常重要。机器学习/深度学习自身用户不断发展的技术栈，其中包括TensorFlow等机器学习的计算框架，Spark数据处理引擎和CUDA等底层驱动程序。手动管理这些依赖将消耗从业人员大量的资源和精力。
 
  
 
-Based on the above goals and challenges, deep learning and other AI computing choose to use containers and Kubernetes to build and manage deep learning platforms. Need to achieve user isolation, queuing mechanism, user rights management, resource management, container ceiling management and many other functions.
+基于上述目标和挑战，深度学习和其他AI计算选择使用容器和kubernetes来构建和管理深度学习平台。**需要实现用户隔离、排队机制、用户权限管理、资源管理、容器上限管理等诸多功能。**
 
 
 
-### Common scenarios
+### 常见场景
 
-1. Priority issues:There are many roles of algorithm engineers in the company, such as interns, full-time employees and senior engineers. They all do the same thing and need GPU resources to do experiments or training. However, when resources are tight, they need to queue according to priority. Even in the same position, there is preemption for urgent assignments (such as paper deadlines, project launches). The priority level of the task needs to be reported by the engineer. 
-2. storage of data:The data sets of deep learning scenarios are very large, so it is necessary to optimize the design at the storage level to meet this requirement. When computing, if one person trains a model, then simple storage is OK. However, if there are 100 people and each person has different training models and data sets, and needs to run multiple tasks, what kind of storage can help you solve this problem? This is a realistic problem facing us. How storage ADAPTS to the ever-expanding computing needs of users is a matter of concern to architects 
-3. Parallel computing problem:A general requirement of deep learning platform based on K8S is to support multi-machine scheduling and make model training as fast as possible through multi-machine parallel training. 
-4. User isolation problem :For larger companies, there are many business departments, which require multi-user management and multi-tenant isolation. (User isolation problem)
-5. Batch scheduling requirements for pod under deep learning scenarios.
-6. Resource preemption problem:The upper limit on the amount of scarce resources (GPUs) used and the upper limit on how long they can be used. 
-7. Reservation:The details of the underlying application resources are shielded. It only cares about the total amount of available GPU, not the distribution of GPU. 
-
-
-
-## referrals of the configuration
-
-- Priority issues: Customize the priority hierarchy. Focus on the `PriorityClassName` of the job itself. This field represents the priority of the job and is in effect for preemptive scheduling and prioritization.
-
-- Data storage: Recommends the `block storage` service in extremely performing businesses such as databases. Recommend the use of `object storage` service in the business scenarios of HPC, big data and AI.
-
-- High performance computing, model training parallelism :WRF, Kubegene, MPI high performance computing scenarios, multi-machine parallel training.
-
-  1. Job Plugin: `ssh` provides secret login, and `svc` provides network information needed for job operation, such as host file, headless service, etc, to provide automatic configuration for calculating cluster parameters.
-
-  2. `Policies field`: Once any `pod` has been killed, restart the entire job `restartJob`/`compeletedJob`. Because of this HPC scenario, Gang-based training job, if a worker fails, it is usually pointless for the entire job to run.
-
-  3. This scenario will generally define multiple `tasks`, 1 master + multiple workers.
-
-- Multi-tenancy, isolation issues :TensorFlow has no concept of tenants. The new resource splitting tool `Queue` introduced by Volcano is configured around Queue in various ways. To ensure the multi-lease of the cluster resources, the surplus of the cluster resources, and the flexibility of the tenants to use the cluster resources. When the cluster resources are redivided, the tenant resource quota can be guaranteed through Reclaim. Configure `preempt, reclaim` in `Volcano-Scheduler-ConfigMap`; configure `proportion` in plugins.
-
-- Batch scheduling: The `Gang Plugin` meets the requirements of pod batch scheduling for deep learning scenarios. The class field `minAvailable`, the main indicator of the Gang scheduling algorithm. The plugins field needs to use `env` and `svc`. The definition of Policies is similar to the high performance computing scenario where a `pod` ejection restarts the job.
+1. 优先级的问题：公司内部算法工程师有众多角色，例如实习生、全职员工、资深工程师，他们做的事情相同，都需要GPU资源去做实验或者训练，但是资源紧张的时候需要按照优先级排队。即便是职位相同，也存在紧急作业（如论文截稿、项目上线）的抢占。任务的优先级别需要工程师申请报备。
+2. 数据的存储问题：深度学习场景数据集非常大，针对这一需求需要在存储层面进行优化设计。计算的时候，如果是一个人训练一个模型，那么其实简单的存储就 OK 了，但如果有一百个人而且每个人训练的模型、用的数据集都不一样，还需要跑多机任务，这个时候什么样的存储才能帮你解决这个问题？这是摆在我们眼前比较现实的一个问题。针对用户不断扩展的计算需求，存储怎么做适配，这是架构师关注的问题。
+3. 并行计算：基于k8s的深度学习平台一个通用的需求是支持多机调度，通过多机并行训练让模型训练越快越好。
+4. 用户隔离问题：对于较大的公司，业务部门众多，需要多用户管理，多租户隔离。 
+5. 深度学习场景下对pod的批量调度需求。
+6. 资源抢占：对稀缺资源（GPU）占用数量的上限以及使用时间上限。
+7. 资源预留：屏蔽底层申请资源细节，只关心可用的GPU总量，不关心GPU分布情况。
+8. 定制化问题：深度学习平台定制化的需求：kubeflow集成了很多组件，但缺点是囊括太多东西，学习成本高，有些场景可能只需要训练不需要Serving，一些公司自己的管理组建和kubeflow对接定制化的组合，会是一个很麻烦的点。每家公司都有不一样的地方，都会根据自己的业务结合基础架构做定制化的东西。其实上面说的1-8条需求都是一种定制化的需求。这个模块也是为了帮助开发者来定制化使用volcano。
 
 
 
-Reference:
+### 推介配置
 
-[1][Challenges facing AI infrastructure ](https://zhuanlan.zhihu.com/p/75634193)
+- 优先级问题:定制优先级层次。关注job自身的`priorityClassName`，该字段表示作业的优先级，在抢占调度和优先级排序中生效。
+
+- 数据存储:在数据库等性能极致的业务中，推介块存储服务。在HPC、大数据、ai的业务场景，推介使用对象存储服务。
+
+- 高性能计算、模型训练并行性:WRF、kubegene、MPI高性能计算场景、多机并行训练。
+
+  1.job plugin:`ssh`提供免密登陆，`svc`提供作业运行所需要的网络信息如host文件、headless service等，来提供计算集群参数的自动化配置。
+
+  2.`policies`字段：一旦有pod被杀死，那么重启整个作业`RestartJob`/`CompeletedJob`。因为这种HPC场景、基于Gang的训练作业，如果一个worker运行失败，通常来说整个作业运行下去是没什么意义的。
+
+  3.这种场景一般会定义多个task，1 master + 多个worker。
+
+- 多租户、隔离问题:TensorFlow中没有租户的概念。volcano引入的新的资源分割工具`Queue`，这在配置中就各种围绕`Queue`来进行配置。保证集群资源使用的多租性，集群资源有剩余，保证租户使用集群资源的弹性。当集群资源重新划分，通过reclaim 可以保障租户资源配额可用。在`volcano-scheduler-configmap`的`action`中配置配置`preempt`、`reclaim`,plugins中配置`Proportion`。
+
+- 批量调度:`Gang plugin`满足深度学习场景对pod批量调度的需求。spec字段下`minAvailable`，Gang调度算法的主要指标。plugins字段需要使用env、svc。`policies`字段推介`RestartJob`/`CompeletedJob`，一个`pod`驱逐就重启作业。
+
+
+
+参考资料:
+
+[1][Momenta的AI架构师谈AI基础架构面临的问题 ](https://zhuanlan.zhihu.com/p/75634193)

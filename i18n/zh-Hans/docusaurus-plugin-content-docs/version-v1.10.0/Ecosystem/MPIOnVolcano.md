@@ -2,32 +2,31 @@
 title: "MPI on Volcano"
 sidebar_position: 4
 ---
+### HPC简介
 
-### HPC introduction
-
-High Performance Computing (HPC) refers to the use of aggregated Computing power to handle data-intensive Computing tasks that cannot be performed by standard workstations.
+高性能计算（High Performance Computing，缩写HPC）指利用聚集起来的计算能力来处理标准工作站无法完成的数据密集型的计算任务。
 
 HPC = PBS + Maui + OpenMPI[1]
 
-- PBS：Resource manager, which is responsible for managing resources for all nodes in the cluster
-- Maui：Third-party task scheduler, support resource reservation, support various complex priority policies, support preemption, etc.
-- OpenMPI：The upper communication environment, taking into account the functions of communication library, compilation and distributed start task.
+- PBS：资源管理器，负责管理集群中所有节点的资源
+- Maui：第三方任务调度器，支持资源预留，支持各种复杂的优先级策略，支持抢占等。
+- OpenMPI：上层通信环境，兼顾通信库、编译、分布式启动任务的功能。
 
-### openMPI introduction
+### openMPI简介
 
-The OpenMPI project is an open source messaging interface implementation developed and maintained by a coalition of academic, research, and industry partners. Through it we can carry on the parallelization program design.
+openMPI项目是一个开源消息传递接口实现，由学术，研究和行业合作伙伴联盟开发和维护。通过它我们来进行并行化的程序设计。
 
-### How is opensMPI implemented
+### opensMPI如何执行
 
-Here is a simple 4-thread MPI program example.
+下面是一个简单的4线程mpi程序例子。
 
-![The working principle of MPI](/img/doc/mpi1.png)
+![mpi工作原理](/img/doc/mpi1.png)
 
 
 
 ### MPI on Volcano
 
-Create `mpi-example.yaml`.
+创建mpi-example.yaml
 
 ```
 apiVersion: batch.volcano.sh/v1alpha1
@@ -84,13 +83,13 @@ spec:
 
 ```
 
-Delopy `mpi-example.yaml`.
+部署mpi-example.yaml
 
 ```
 kubectl apply -f mpi-example.yaml
 ```
 
-View job performance under the cluster.
+在集群下查看作业执行情况
 
 ```
 kubectl get pod

@@ -1,45 +1,45 @@
 ---
-title: "Network Topology Aware Scheduling"
+title: "网络拓扑感知调度"
 ---
 
-## Background
+## 背景
 
-In the context of AI large model training, Model Parallelism divides the model across multiple nodes, requiring frequent and substantial data exchange between these nodes during training. At this point, the network transmission performance between nodes often becomes the bottleneck of training, significantly affecting training efficiency. Data centers have diverse network types (such as IB, RoCE, NVSwitch, etc.), and the network topology is complex, typically involving multiple layers of switches. The fewer switches between two nodes, the lower the communication latency and the higher the throughput. Therefore, users want to schedule workloads to the best performance domain with the highest throughput and lowest latency, minimizing cross-switch communication to accelerate data exchange and improve training efficiency.
+在AI大模型训练场景中，模型并行（Model Parallelism）将模型分割到多个节点上，训练过程中这些节点需要频繁进行大量数据交互。此时，节点间的网络传输性能往往成为训练的瓶颈，显著影响训练效率。数据中心的网络类型多样（如IB、RoCE、NVSwitch等），且网络拓扑复杂，通常包含多层交换机。两个节点间跨的交换机越少，通信延迟越低，吞吐量越高。因此，用户希望将工作负载调度到具有最高吞吐量和最低延迟的最佳性能域，尽可能减少跨交换机的通信，以加速数据交换，提升训练效率。
 
-To address this, Volcano proposed the **Network Topology Aware Scheduling** strategy, which uses a unified network topology API and intelligent scheduling policies to solve the network communication performance issues in large-scale data center AI training tasks.
+为此，Volcano提出了**网络拓扑感知调度（Network Topology Aware Scheduling）**策略，通过统一的网络拓扑API和智能调度策略，解决大规模数据中心AI训练任务的网络通信性能问题。
 
-## Features
+## 功能
 
-#### Unified Network Topology API: Accurately Expressing Network Topology
+#### 统一的网络拓扑API：精准表达网络结构
 
-To shield the differences in data center network types, Volcano defines a new CRD **[HyperNode](https://github.com/volcano-sh/apis/blob/network-topology-dev/pkg/apis/topology/v1alpha1/hypernode_types.go)** to represent the network topology, providing a standardized API interface. Compared to the traditional method of using node labels to represent network topology, HyperNode has the following advantages:
+为了屏蔽数据中心网络类型的差异，Volcano定义了新的CRD **[HyperNode](https://github.com/volcano-sh/apis/blob/network-topology-dev/pkg/apis/topology/v1alpha1/hypernode_types.go)**来表示网络拓扑，提供了标准化的API接口。与传统的通过节点标签（label）表示网络拓扑的方式相比，HyperNode具有以下优势：
 
-- **Unified Semantics**: HyperNode provides a standardized way to describe network topology, avoiding the semantic inconsistency issues of the label method.
-- **Hierarchical Structure**: HyperNode supports a tree-like hierarchical structure, allowing for more precise representation of the actual network topology.
-- **Easy Management**: Cluster administrators can manually create HyperNodes or use network topology auto-discovery tools to maintain HyperNodes.
+- **语义统一**：HyperNode提供了标准化的网络拓扑描述方式，避免了标签方式的语义不一致问题。
+- **层级结构**：HyperNode支持树状层级结构，能够更精确地表达实际的网络拓扑。
+- **易于管理**：集群管理员可以手动创建HyperNode，或通过网络拓扑自动发现工具维护HyperNode。
 
-A HyperNode represents a network topology performance domain, typically mapped to a switch or tor. Multiple HyperNodes are connected hierarchically to form a tree structure. For example, the following diagram shows a network topology composed of multiple HyperNodes:
+一个HyperNode表示一个网络拓扑性能域，通常映射到一个交换机或者Tor。多个HyperNode通过层级连接，形成树状结构。例如，下图展示了由多个HyperNode构成的网络拓扑：
 
 ![](/img/doc/hypernode-example.png)
 
-- **Leaf HyperNodes** (s0, s1, s2, s3): The child node type is the real nodes in the cluster.
-- **Non-leaf HyperNodes** (s4, s5, s6): The child node type is other HyperNodes.
+- **叶子HyperNode**（s0、s1、s2、s3）：子节点类型为集群中的真实节点。
+- **非叶子HyperNode**（s4、s5、s6）：子节点类型为其他HyperNode。
 
-In this structure, the communication efficiency between nodes depends on the HyperNode hierarchy span between them. For example:
+在这种结构中，节点间的通信效率取决于它们之间的HyperNode层级跨度。例如：
 
-- **node0** and **node1** belong to s0, achieving the highest communication efficiency.
-- **node1** and **node2** need to cross two layers of HyperNodes (s0→s4→s1), resulting in lower communication efficiency.
-- **node0** and **node4** need to cross three layers of HyperNodes (s0→s4→s6), resulting in the worst communication efficiency.
+- **node0**和**node1**同属于s0，通信效率最高。
+- **node1**和**node2**需要跨两层HyperNode（s0→s4→s1），通信效率较低。
+- **node0**和**node4**需要跨三层HyperNode（s0→s4→s6），通信效率最差。
 
-##### Key Fields
+##### 关键字段
 
-- **spec.tier:** Represents the hierarchy of the HyperNode. The lower the tier, the higher the communication efficiency between nodes within the HyperNode.
-- **spec.members:** A group of child nodes under the HyperNode, which can be matched using a selector.
-- **spec.members[i].type:** The type of child node, supporting `Node` and `HyperNode`. When all child nodes are `Node`, the current HyperNode is a leaf node. When all child nodes are `HyperNode`, the current node is a non-leaf HyperNode.
-- **spec.members[i].selector:** Child node selector, supporting `exactMatch`, `regexMatch`, and `labelMatch`.
-    - `exactMatch` means exact matching, where the child node needs to fill in the full name of the HyperNode or Node.
-    - `regexMatch` means regular expression matching, where nodes matching the regular expression are treated as child nodes of the current HyperNode.
-    - `labelMatch` means matching by labels. Nodes with corresponding labels will be considered child nodes of the current HyperNode. An example configuration is:
+- **spec.tier:** 表示HyperNode的层级，层级越低，则该HyperNode内的节点通信效率越高。
+- **spec.members:** HyperNode下面的一组子节点，可以通过selector来匹配关联的子节点。
+- **spec.members[i].type:** 子节点的类型，支持`Node`和`HyperNode`两种，子节点全部为`Node`时，代表当前HyperNode为叶子节点，子节点全部为`HyperNode`时，代表当前节点为非叶子HyperNode。
+- **spec.members[i].selector:** 子节点选择器，支持`exactMatch`，`regexMatch`，和`labelMatch`三种selector。
+    - `exactMatch`表示精确匹配，子节点需要填写完整的HyperNode或者Node的name，
+    - `regexMatch`表示的是正则匹配，与正则表达式匹配的Node都会被当做当前HyperNode的子节点。
+    - `labelMatch`表示的是按标签匹配，带有对应标签的节点都会被当做当前HyperNode的子节点，配置示例如:
 
         ```yaml
         labelMatch:
@@ -47,18 +47,18 @@ In this structure, the communication efficiency between nodes depends on the Hyp
             topology-rack: rack-1
         ```
 
-> Note: `regexMatch/labelMatch` can only be used in leaf HyperNodes to match real nodes in the cluster. When `spec.members[i].selector.type` is `HyperNode`, `regexMatch/labelMatch` is not supported.
+> 注意：regexMatch/labelMatch只能用在叶子HyperNode中，用来匹配集群中的真实节点，也就是说当spec.members[i].selector.type为HyperNode时，不支持regexMatch/labelMatch。
 
-#### Network Topology Aware Scheduling Policy
+#### 基于网络拓扑的感知调度策略
 
-Volcano Job and PodGroup can set the topology constraints of the job through the `networkTopology` field, supporting the following configurations:
+Volcano Job和PodGroup可以通过`networkTopology`字段设置作业的拓扑约束，支持以下配置：
 
-- **mode**: Supports `hard` and `soft` modes.
-    - `hard`: Hard constraint, tasks within the job must be deployed within the same HyperNode.
-    - `soft`: Soft constraint, tasks are deployed within the same HyperNode as much as possible.
-- **highestTierAllowed**: Used with `hard` mode, indicating the highest tier of HyperNode allowed for job deployment. This field is not required when `mode` is `soft`.
+- **mode**：支持`hard`和`soft`两种模式。
+    - `hard`：硬约束，作业内的任务必须部署在同一个HyperNode内。
+    - `soft`：软约束，尽可能将作业部署在同一个HyperNode下。
+- **highestTierAllowed**：与`hard`模式配合使用，表示作业允许跨到哪层HyperNode部署，soft模式下无需配置该字段。
 
-For example, the following configuration means the job can only be deployed within HyperNodes of tier 2 or lower, such as s4 and s5, and their child nodes s0, s1, s2, s3. Otherwise, the job will remain in the Pending state:
+例如，以下配置表示作业只能部署在2层及以下的HyperNode内，如s4和s5，以及更低层的tier: s4和s5的子节点s0，s1，s2，s3，否则作业将处于Pending状态：
 
 ```yaml
 spec:
@@ -67,41 +67,39 @@ spec:
     highestTierAllowed: 2
 ```
 
-Through this scheduling strategy, users can precisely control the network topology constraints of the job, ensuring that the job runs in the best performance domain that meets the conditions, thereby significantly improving training efficiency.
+通过这种调度策略，用户可以精确控制作业的网络拓扑约束，确保作业在满足条件的最佳性能域运行，从而显著提升训练效率。
 
-#### HyperNode Auto-Discovery: Simplifying Network Topology Management
+#### HyperNode自动发现：简化网络拓扑管理
 
-To further reduce the management burden of network topology information, Volcano provides the HyperNode auto-discovery feature. This feature automatically discovers network topology structures within clusters and creates, updates, or deletes corresponding HyperNode Custom Resources (CRs) based on the discovery results.
+为进一步降低网络拓扑信息的管理负担，Volcano提供了HyperNode自动发现功能。该功能能够自动发现集群内的网络拓扑结构，并根据发现结果自动创建、更新或删除相应的HyperNode自定义资源（CRs）。
 
-The auto-discovery feature offers the following key benefits:
+自动发现功能具有以下核心优势：
 
-- **Automated Management**: Automatically discovers and maintains HyperNode information from various data sources (such as UFM, RoCE, or node labels), eliminating the need for manual maintenance.
-- **Real-time Updates**: Periodically synchronizes network topology changes to ensure HyperNode information remains current with the actual network state.
-- **Extensible Architecture**: Supports pluggable Discoverer components, allowing users to develop custom discovery logic for their specific network management tools.
+- **自动化管理**：自动从多种数据源（如UFM、RoCE或节点标签）发现和维护HyperNode信息，无需手动维护。
+- **实时同步**：定期同步网络拓扑变化，确保HyperNode信息与实际网络状态保持一致。
+- **可扩展架构**：支持可插拔的Discoverer组件，用户可针对特定的网络管理工具开发自定义发现逻辑。
 
-Through this automated discovery mechanism, users can focus on job scheduling configuration without worrying about the complexities of HyperNode creation and maintenance, significantly simplifying the deployment and management of network topology-aware scheduling.
+通过这一自动化发现机制，用户可以专注于作业调度配置，无需担心HyperNode创建和维护的复杂性，显著简化了网络拓扑感知调度的部署和管理。
 
-## User Guide
+## 使用指导
 
-### Installing Volcano
+### 安装Volcano
 
-Volcano can be installed using either of the following methods:
-
-#### Using Helm (Recommended)
+Volcano支持以下两种安装方式：
+#### 通过Helm安装（推荐）
 ```bash
 helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
 helm repo update
 helm install volcano volcano-sh/volcano -n volcano-system --create-namespace --version 1.12.0
 ```
-
-#### Using YAML file
+#### 使用YAML文件安装
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/refs/heads/network-topology/installer/volcano-development.yaml
 ```
 
-### Configure the Volcano Scheduler
+### 配置Volcano调度器
 
-To enable the network topology-aware scheduling feature, you need to modify the Volcano scheduler's configuration file. Below is an example configuration that enables both the `network-topology-aware` and `binpack` plugins; enabling `binpack` helps achieve more compact task scheduling:
+要启用网络拓扑感知调度功能，需要修改Volcano调度器的配置文件。以下是一个配置示例，其中同时启用了 `network-topology-aware` 和 `binpack` 插件，开启`binpack`更有助于实现更紧凑的任务调度：
 
 ```yaml
 kind: ConfigMap
@@ -120,37 +118,37 @@ data:
       - name: predicates
       - name: proportion
       - name: nodeorder
-      - name: binpack # Enable binpack plugin to help with compact task scheduling
-      # arguments: # Used to configure the weights of various resources in the binpack plugin and the binpack plugin's own weight
-      #   binpack.weight: 10 # Weight of the binpack plugin, affects the overall score of the binpack strategy
-      #   binpack.cpu: 5 # CPU resource weight, higher weight means greater proportion of CPU resources in scoring
-      #   binpack.memory: 1 # Memory resource weight
-      #   binpack.resources: nvidia.com/gpu # Specify extend resources
-      #   binpack.resources.nvidia.com/gpu: 2 # GPU weight
-      - name: network-topology-aware # Enable network-topology-aware plugin
+      - name: binpack # 启用binpack插件，有助于任务的紧凑调度
+      # arguments: # 用来配置binpack插件中各项资源的权重以及binpack插件自身的权重
+      #   binpack.weight: 10 # binpack插件的权重，影响binpack策略的整体得分
+      #   binpack.cpu: 5 # CPU资源的权重，权重越高，CPU资源在打分时的占比越大
+      #   binpack.memory: 1 # Memory资源的权重
+      #   binpack.resources: nvidia.com/gpu # 指定额外资源类型，如GPU
+      #   binpack.resources.nvidia.com/gpu: 2 # GPU的权重
+      - name: network-topology-aware # 开启network-topology-aware插件
       # arguments:
-      #   weight: 10 # Optionally set the scoring weight for network-topology-aware, default weight is 1
+      #   weight: 10 # 可以选择设置network-topology-aware的打分权重，默认weight为1
 ```
 
-### HyperNode CRs Management
+### HyperNode CRs管理
 
-HyperNode CRs can be managed through auto-discovery or manual creation.
+HyperNode CRs可以通过自动发现或手动创建两种方式进行管理。
 
-#### HyperNode Auto-Discovery (Recommended)
+#### HyperNode自动发现（推荐）
 
-Volcano achieves automatic discovery and management of HyperNodes by integrating pluggable network topology discovery tools (Discoverers). Discoverers are responsible for periodically collecting network topology information from external network topology management systems (such as UFM, RoCE, or based on node labels) and converting it into a standard HyperNode representation.
-Subsequently, Volcano's built-in HyperNode Controller automatically creates, updates, or deletes the corresponding HyperNode Custom Resources (CRs) based on the information provided by the Discoverers. This mechanism enables the Volcano scheduler to utilize dynamically maintained HyperNode CRs for precise network topology-aware scheduling,
-thereby eliminating the burden of manually creating and maintaining HyperNode information for users and simplifying the complexity of network topology management.
+Volcano通过集成可插拔的网络拓扑发现工具（Discoverer）实现HyperNode的自动发现与管理。Discoverer负责定期从外部网络拓扑管理系统（如UFM、RoCE、或基于节点标签等方式）收集网络拓扑信息，并将其转换为标准的HyperNode表示。
+随后，Volcano内置的HyperNode Controller会根据Discoverer提供的信息，自动创建、更新或删除相应的HyperNode自定义资源（CRs）。这种机制使得Volcano调度器能够利用动态维护的HyperNode CRs进行精准的网络拓扑感知调度，
+从而免除用户手动创建和维护HyperNode信息的负担，简化网络拓扑管理的复杂性。
 
-Volcano provides several common Discoverer implementations to suit typical network environments. Additionally, Volcano supports users in developing custom Discoverer plugins based on their specific network topology discovery tools and requirements.
+Volcano提供了一些通用的Discoverer实现，以适应常见的网络环境。同时，Volcano也支持用户根据自身特定的网络拓扑发现工具和需求，开发自定义的Discoverer插件。
 
-##### Configuration
+##### 配置
 
-The HyperNode auto-discovery feature is configured via a ConfigMap. The ConfigMap contains the configuration for the discovery sources, such as UFM, RoCE, and label. You can modify the configuration according to your own cluster environments.
+HyperNode自动发现功能通过ConfigMap进行配置。ConfigMap中包含了发现源（如UFM、RoCE和label）的配置，你可以根据自己的集群环境修改配置。
 
-###### Secret Configuration (Required for UFM source)
+###### Secret配置（UFM源必需）
 
-If your cluster's underlying network uses InfiniBand (IB) networking and is managed by UFM (Unified Fabric Manager), you must first create a Kubernetes Secret to store your UFM credentials when configuring UFM as a discovery source:
+如果你的集群底层网络采用InfiniBand (IB) 组网，并由UFM (Unified Fabric Manager) 管理，那么在配置UFM作为发现源时，需要首先创建一个Kubernetes Secret来存储UFM凭据：
 
 ```bash
 kubectl create secret generic ufm-credentials \
@@ -159,16 +157,16 @@ kubectl create secret generic ufm-credentials \
   -n volcano-system
 ```
 
-> Note: Replace `your-ufm-username` and `your-ufm-password` with your actual UFM credentials, and adjust the namespace if needed.
+> 注意：请将 `your-ufm-username` 和 `your-ufm-password` 替换为你的实际UFM凭据，并根据需要调整命名空间。
 
-###### ConfigMap Example
+###### ConfigMap示例
 
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: volcano-controller-configmap
-  namespace: volcano-system # Replace with your actual Volcano namespace if Volcano is not installed in the default namespace.
+  namespace: volcano-system # 如果Volcano未安装在默认命名空间，请替换为实际的Volcano命名空间。
 data:
   volcano-controller.conf: |
     networkTopologyDiscovery:
@@ -177,8 +175,8 @@ data:
         interval: 10m
         credentials:
           secretRef:
-            name: ufm-credentials # Replace with the secret name that stores the UFM credentials.
-            namespace: volcano-system # Replace with the secret namespace that stores the UFM credentials.
+            name: ufm-credentials # 替换为存储UFM凭据的Secret名称。
+            namespace: volcano-system #替换为存储UFM凭据的Secret的命名空间。
         config:
           endpoint: https://ufm-server:8080
           insecureSkipVerify: true
@@ -192,74 +190,74 @@ data:
         config:
           networkTopologyTypes:
             topologyA2:
-              - nodeLabel: "volcano.sh/tor" # The label that indicates which tor a node belongs to. If the values corresponding to this label on different nodes are the same, it means these nodes belong to the same tor.
-              - nodeLabel: "kubernetes.io/hostname" # A standard label automatically added to each node in a Kubernetes cluster, used to identify the hostname of the node.
+              - nodeLabel: "volcano.sh/tor" # 用于指示节点所属交换机（tor）的标签。如果不同节点上该标签对应的取值相同，则表示这些节点属于同一台交换机（tor）。
+              - nodeLabel: "kubernetes.io/hostname" # Kubernetes 集群中自动添加到每个节点的标准标签，用于标识节点的主机名。
             topologyA3:
-              - nodeLabel: "volcano.sh/hypercluster" # The label that indicates which hypercluster a node belongs to. If the values corresponding to this label on different nodes are the same, it means these nodes belong to the same hypercluster.
-              - nodeLabel: "volcano.sh/hypernode" # The label that indicates which hypernode a node belongs to. If the values corresponding to this label on different nodes are the same, it means these nodes belong to the same hypernode.
-              - nodeLabel: "kubernetes.io/hostname" # A standard label automatically added to each node in a Kubernetes cluster, used to identify the hostname of the node.
+              - nodeLabel: "volcano.sh/hypercluster" # 用于指示节点所属超集群（hypercluster）的标签。如果不同节点上该标签对应的取值相同，则表示这些节点属于同一个超集群（hypercluster）。
+              - nodeLabel: "volcano.sh/hypernode" # 用于指示节点所属超节点（hypernode）的标签。如果不同节点上该标签对应的取值相同，则表示这些节点属于同一个超节点（hypernode）。
+              - nodeLabel: "kubernetes.io/hostname" # Kubernetes 集群中自动添加到每个节点的标准标签，用于标识节点的主机名。
 ```
 
-##### Configuration Options
+##### 配置选项
 
-*   `source`: The discovery source, e.g., `ufm`.
-*   `enabled`: Whether to enable this discovery source.
-*   `interval`: The time interval between discovery operations. If not specified, the default value is 1 hour.
-*   `config`: The configuration for the discovery source. Configuration options vary depending on the discovery source.
-*   `credentials`: Credential configuration for accessing the discovery source.
-    *   `secretRef`: Reference to a Kubernetes Secret containing credentials.
-        *   `name`: The name of the Secret.
-        *   `namespace`: The namespace of the Secret.
+*   `source`: 发现源，例如 `ufm`。
+*   `enabled`: 是否启用该发现源。
+*   `interval`: 发现操作之间的时间间隔。如果未指定，则默认值为1小时。
+*   `config`: 发现源的配置。配置选项因发现源而异。
+*   `credentials`: 用于访问发现源的凭据配置。
+    *   `secretRef`: 对包含凭据的Kubernetes Secret的引用。
+        *   `name`: Secret的名称。
+        *   `namespace`: Secret的命名空间。
 
-###### UFM Configuration Options
+###### UFM配置选项
 
-*   `endpoint`: UFM API endpoint.
-*   `insecureSkipVerify`: Whether to skip TLS certificate verification. This should only be used in development environments.
+*   `endpoint`: UFM API端点。
+*   `insecureSkipVerify`: 是否跳过TLS证书验证。这只应在开发环境中使用。
 
-###### RoCE Configuration Options (Currently not supported)
+###### RoCE配置选项（当前不支持）
 
-*   `endpoint`: RoCE API endpoint.
-*   `token`: RoCE API token.
+*   `endpoint`: RoCE API端点。
+*   `token`: RoCE API令牌。
 
-###### Label Configuration Options
+###### Label配置选项
 
-*   `networkTopologyTypes`: The structure that supports different types of network topologies, including those for GPU, NPU, etc. Below is an example of the NPU cluster network topology.
-    * `topologyA2`: The network topology type of A2 (Ascend 910B) cluster.
-        * `nodeLabel`: For the labels on a node, when there are multiple labels, hypernodes are constructed from bottom to top. The bottommost label is `kubernetes.io/hostname`, which is a standard built-in label key in Kubernetes, and the label above it is `volcano.sh/tor`, indicates which tor a node belongs to.
-    * `topologyA3`: The network topology type of A3 (Ascend 910C) cluster.
-        * `nodeLabel`: For the labels on a node, when there are multiple labels, hypernodes are constructed from bottom to top. The bottommost label is `kubernetes.io/hostname`, which is a standard built-in label key in Kubernetes, and the label above it is `volcano.sh/hypernode` and `volcano.sh/hypercluster`, `volcano.sh/hypernode` indicates which hypernode a node belongs to, and `volcano.sh/hypercluster` indicates which hypercluster a node belongs to.
+*   `networkTopologyTypes`: 支持不同类型网络拓扑的结构，包括适用于GPU、NPU等的拓扑。以下是NPU集群网络拓扑的示例。
+    * `topologyA2`: A2（昇腾 910B）集群的网络拓扑类型
+        * `nodeLabel`: 对于节点上的标签，当存在多个标签时，超节点会自下而上构建。最底层的标签是`kubernetes.io/hostname`，这是Kubernetes中的标准内置标签键，其上方的标签是`volcano.sh/tor`，用于指示节点所属的交换机。
+    * `topologyA3`: A3（昇腾 910C）集群的网络拓扑类型
+        * `nodeLabel`: 对于节点上的标签，当存在多个标签时，超节点会自下而上构建。最底层的标签是`kubernetes.io/hostname`，这是Kubernetes中的标准内置标签键，其上方的标签为`volcano.sh/hypernode`和`volcano.sh/hypercluster`，`volcano.sh/hypernode`用于指示节点所属的超节点，`volcano.sh/hypercluster`用于指示节点所属的超集群。
 
-##### Verification
+##### 验证
 
-1.  Check the Volcano controller logs to ensure that the discovery sources are started successfully.
+1.  检查Volcano控制器日志，确保发现源已成功启动。
 
 ```bash
 kubectl logs -n volcano-system -l app=volcano-controllers -c volcano-controllers | grep "Successfully started all network topology discoverers"
 ```
 
-2.  Check the created HyperNode resources.
+2.  检查已创建的HyperNode资源。
 
 ```bash
 kubectl get hypernodes -l volcano.sh/network-topology-source=<source>
 ```
 
-Replace `<source>` with the discovery source you configured, such as `ufm`.
+将 `<source>` 替换为你配置的发现源，例如 `ufm`。
 
-##### Troubleshooting
+##### 故障排除
 
-*   If the discovery sources are not started successfully, check the Volcano controller logs for errors.
-*   If the HyperNode resources are not created, check the discovery source configuration and ensure that the discovery source is able to connect to the network topology data source.
+*   如果发现源未成功启动，请检查Volcano控制器日志以获取错误信息。
+*   如果未创建HyperNode资源，请检查发现源配置，并确保发现源能够连接到网络拓扑数据源。
 
 
-> **If users want to implement their own HyperNode discoverer, please refer to: [HyperNode Discoverer Development Guide](https://github.com/volcano-sh/volcano/blob/master/docs/design/hyperNode-auto-discovery.md#discoverer)**
+> **如果用户要实现自己的HyperNode discoverer，请参考：[HyperNode Discoverer 开发指南](https://github.com/volcano-sh/volcano/blob/master/docs/design/hyperNode-auto-discovery.md#discoverer)**
 
-#### Manually Creating HyperNodes
+#### 手动创建HyperNode
 
-If you do not have a network topology auto-discovery tool available in your environment, or if you prefer to define HyperNodes with more fine-grained control, you can choose to create HyperNode CRs manually.
+如果你的环境中没有可用的网络拓扑自动发现工具，或者你希望更精细地控制HyperNode的定义，可以选择手动创建HyperNode CRs。
 
-Still using the network topology in Figure 1 as an example, create leaf and non-leaf HyperNodes. This example is for demonstration purposes only; the actual HyperNodes to be created should match the real topology of the cluster.
+仍以图1中的网络拓扑为例，分别创建叶子节点和非叶子节点HyperNode。本样例仅为使用演示，实际需要创建的HyperNode请以集群中的真实拓扑为准。
 
-First, create the leaf HyperNodes s0, s1, s2, and s3.
+先创建叶子节点HyperNode s0，s1，s2和s3。
 
 ```yaml
 apiVersion: topology.volcano.sh/v1alpha1
@@ -267,7 +265,7 @@ kind: HyperNode
 metadata:
   name: s0
 spec:
-  tier: 1 # s0 is at tier1
+  tier: 1 # s0位于tier1
   members:
   - type: Node
     selector:
@@ -281,7 +279,7 @@ spec:
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: s1 # s1 is at tier1
+  name: s1 # s1位于tier1
 spec:
   tier: 1
   members:
@@ -297,7 +295,7 @@ spec:
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: s2 # s2 is at tier1
+  name: s2 # s2位于tier1
 spec:
   tier: 1
   members:
@@ -315,7 +313,7 @@ kind: HyperNode
 metadata:
   name: s3
 spec:
-  tier: 1 # s3 is at tier1
+  tier: 1 # s3位于tier1
   members:
   - type: Node
     selector:
@@ -327,13 +325,13 @@ spec:
         name: "node-7"
 ```
 
-Then, create the non-leaf HyperNodes s4, s5, and s6.
+然后创建非叶子节点s4，s5和s6。
 
 ```yaml
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: s4 # s4 is at tier2
+  name: s4 # s4位于tier2
 spec:
   tier: 2
   members:
@@ -351,7 +349,7 @@ kind: HyperNode
 metadata:
   name: s5
 spec:
-  tier: 2 # s5 is at tier2
+  tier: 2 # s5位于tier2
   members:
   - type: HyperNode
     selector:
@@ -367,7 +365,7 @@ kind: HyperNode
 metadata:
   name: s6
 spec:
-  tier: 3 # s6 is at tier3
+  tier: 3 # s6位于tier3
   members:
   - type: HyperNode
     selector:
@@ -379,7 +377,7 @@ spec:
         name: "s5"
 ```
 
-### Deploying a Job with Topology Constraints
+### 部署带有拓扑约束的Job
 
 ```yaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -389,7 +387,7 @@ metadata:
 spec:
   minAvailable: 3
   schedulerName: volcano
-  networkTopology: # Set network topology constraints
+  networkTopology: # 设置network topology约束
     mode: hard
     highestTierAllowed: 2
   queue: default
@@ -411,36 +409,36 @@ spec:
           restartPolicy: OnFailure
 ```
 
-Since the `spec.networkTopology.highestTierAllowed` of the Job is set to 2, the expected result is: the job cannot be deployed within the tier 3 HyperNode s6, meaning it can only be deployed to node0-node3 **or** node4-node7, but not to node0-node7.
+由于Job的spec.networkTopology.highestTierAllowed为2，因此期望结果为: 不能部署在3层HyperNode s6内，也就是只能部署到node0-node3，**或者**node4-node7内，而不能部署在node0-node7内。
 
-### Notes
+### 注意事项
 
-- Non-leaf HyperNodes' member selectors do not support `regexMatch/labelMatch`.
-- `regexMatch/exactMatch/labelMatch` selectors cannot be configured simultaneously; only one type of selector can be configured.
-- When a HyperNode's member is of type `Node`, i.e., the HyperNode is a leaf node, it is not allowed to set a member of type `HyperNode`.
-- Leaf HyperNodes contain real nodes in the cluster, so this feature requires the creation of leaf HyperNodes.
-- HyperNodes cannot have circular dependencies; otherwise, Jobs cannot be scheduled properly.
-- A HyperNode can have multiple child nodes, but a HyperNode can have at most one parent HyperNode; otherwise, Jobs cannot be scheduled properly.
+- 非叶子节点HyperNode的member selector不支持regexMatch/labelMatch。
+- regexMatch/exactMatch/labelMatch selector不能同时配置，只能配置一种selector。
+- HyperNode的member是Node类型，即HypeNode为叶子节点时，不允许再设置类型为HyperNode的member。
+- 叶子节点HyperNode包含了集群中的真实节点，因此使用该特性时必须要创建出叶子HyperNode节点。
+- HyperNode之间不能有环依赖，否则Job无法正常调度。
+- 一个HyperNode可以有多个子节点，但一个HyperNode最多只能有一个parent HyperNode，否则Job无法正常调度。
 
-## Best Practices
+## 最佳实践
 
-### Hard Mode, Soft Mode Selection and Scheduling Overview
+### Hard模式、Soft模式选择及调度简述
 
-*   **`hard` Mode**:
-    *   All tasks in a job must be scheduled within a single HyperNode tier (or lower) defined by `spec.networkTopology.highestTierAllowed`. If a HyperNode satisfying this constraint cannot be found, the job will remain pending. This mode is suitable for scenarios with strict network topology requirements.
-*   **`soft` Mode**:
-    *   The scheduler will make a best effort to schedule all tasks of a job into the same HyperNode to optimize network performance. However, if resource demands cannot be met within a single HyperNode, tasks are allowed to be scheduled across different HyperNodes to ensure the job can run. This mode is suitable for scenarios desiring network performance optimization while accepting some scheduling flexibility.
-*   **Scheduling Plugin and Basic Scoring Logic**:
-    *   Network topology-aware scheduling relies on the `network-topology-aware` plugin. The plugin scoring logic:
-        1.  The lower the tier of a HyperNode, the higher its score.
-        2.  If multiple HyperNodes have the same tier, the HyperNode with more Pods already successfully scheduled for the job will receive a higher score.
+*   **`hard`模式**:
+    *   作业中的所有任务必须被调度到 `spec.networkTopology.highestTierAllowed` 定义的单个HyperNode层级（或更低层级）内。如果找不到满足此约束的HyperNode，作业将保持Pending状态。此模式适用于对网络拓扑有严格要求的场景。
+*   **`soft`模式**:
+    *   调度器会尽最大努力将作业中的所有任务调度到同一个HyperNode内，以优化网络性能。但如果无法在单个HyperNode内满足所有任务的资源需求，也允许任务被调度到不同的HyperNode上，以确保作业能够尽快运行。此模式适用于希望优化网络性能，但又能接受一定调度灵活性的场景。
+*   **调度插件与基本打分逻辑**:
+    *   网络拓扑感知调度依赖于 `network-topology-aware` 插件。该插件打分时：
+        1.  HyperNode的层级越低，得分越高。
+        2.  如果多个HyperNode层级相同，则作业在该HyperNode内已成功调度的Pod数量越多，该HyperNode得分越高。
 
-### HyperNode Auto-Discovery Practices
+### HyperNode自动发现相关实践
 
-* Volcano uses Kubernetes-standard Secrets to store sensitive credential information (username/password or token). For more stringent key encryption requirements, users should consider additional mechanisms like [Encrypting Secret Data at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
-* The credential Secrets can be placed in a specified namespace for better isolation.
-* For UFM discoverer, the controller only needs read access to the specific Secret containing credentials.
-* When deploying in production environments, proper RBAC policies should be configured to limit access to Secrets.
-* TLS certificate verification should be enabled in production environments to prevent MITM attacks.
-* Monitor the Volcano controller logs for errors.
-* Set a reasonable discovery interval to avoid overloading the network topology data source.
+*   Volcano使用 Kubernetes 标准的 Secret 来存储敏感的凭证信息（用户名/密码或令牌）。对于更严格的密钥加密要求，用户应考虑额外的机制，如[静态加密Secret数据](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/)。
+*   凭证 Secret 可以放置在指定的命名空间中，以实现更好的隔离。
+*   对于UFM发现器，控制器仅需要对包含凭证的特定 Secret 的读取权限。
+*   在生产环境中部署时，应配置适当的RBAC策略以限制对 Secret 的访问。
+*   应在生产环境中启用TLS证书验证以防止中间人攻击。
+*   监控Volcano控制器日志以获取错误信息。
+*   设置合理的发现间隔以避免网络拓扑数据源过载。

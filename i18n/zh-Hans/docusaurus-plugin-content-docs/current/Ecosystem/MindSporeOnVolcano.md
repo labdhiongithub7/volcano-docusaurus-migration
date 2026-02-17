@@ -2,16 +2,13 @@
 title: "MindSpore on Volcano"
 sidebar_position: 3
 ---
+### Mindspore简介
 
+MindSpore是华为公司推出的新一代深度学习框架，是源于全产业的最佳实践，最佳匹配昇腾处理器算力，支持终端、边缘、云全场景灵活部署，开创全新的AI编程范式，降低AI开发门槛。
 
+### MindSpore on volcano
 
-### MindSpore introduction
-
-MindSpore is a new generation of deep learning framework launched by Huawei. It is derived from the best practices of the whole industry, which best matches the computing power of the rise processor, supports the flexible deployment of the whole scene of terminal, edge and cloud, and creates a brand new AI programming paradigm and lowers the threshold of AI development.
-
-### MindSpore on Volcano
-
-Create a new `mindSpore-cpu.yaml` in the cluster as follows.
+在集群中新建mindspore-cpu.yaml如下
 
 ```
 apiVersion: batch.volcano.sh/v1alpha1
@@ -48,13 +45,13 @@ spec:
           restartPolicy: OnFailure
 ```
 
-Deploy.
+进行部署。
 
 ```
 kubectl apply -f mindspore-cpu.yaml
 ```
 
-Query the status of the jobs in the cluster.
+查询集群下作业运行情况。
 
 ```
 kubectl get pods

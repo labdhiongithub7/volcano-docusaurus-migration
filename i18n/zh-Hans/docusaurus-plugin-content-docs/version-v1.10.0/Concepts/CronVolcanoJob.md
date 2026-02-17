@@ -3,9 +3,10 @@ title: "Cron VolcanoJob"
 sidebar_position: 4
 ---
 
-### Introduction
-Cron VolcanoJob, also known as cronvcjob or cronvj, is a custom resource type in Volcano. Users can now periodically create and run Volcano Jobs based on predefined schedules, similar to Kubernetes native CronJobs, enabling scheduled execution of batch computing tasks (such as AI and big data workloads).
-### Example
+### 简介
+Cron VolcanoJob，也称为 cronvcjob 或 cronvj，是 Volcano 中的一种自定义资源类型。用户现在可以基于预定义的计划定期创建和运行 Volcano Job，类似于 Kubernetes 原生的 CronJob，从而实现批量计算任务（如 AI 和大数据工作负载）的定时执行。
+
+### 示例
 ```shell
 apiVersion: batch.volcano.sh/v1alpha1
 kind: CronJob
@@ -35,65 +36,65 @@ spec:
           action: RestartJob
       minAvailable: 1
 ```
-View Cron VolcanoJob
+查看 Cron VolcanoJob
 ```shell
 kubectl get cronvcjob
 ```
-View created job instances
+查看已创建的作业实例
 ```shell
 kubectl get vcjob
 ```
-### Key Fields
+### 关键字段
 * schedule
 
-    Required. The cron schedule string for Volcano Job execution. Uses standard cron format.
+    必填。Volcano Job 执行的 cron 计划字符串。使用标准 cron 格式。
 
 * timeZone
 
-    Optional. The time zone name for the schedule. Defaults to the local time zone of the kube-controller-manager.
+    选填。计划的时区名称。默认为 kube-controller-manager 的本地时区。
 
 * concurrencyPolicy
 
-    Optional. Specifies how to manage concurrent executions of jobs created by the Cron VolcanoJob. Must be one of the following:
-    *   Allow (default): Allow concurrent runs  
-    *   Forbid: Skip new run if previous job hasn‘t completed  
-    *   Replace: Cancel currently running job and start new
+    选填。指定如何管理 Cron VolcanoJob 创建的作业的并发执行。必须是以下之一：
+    *   Allow（默认）：允许并发运行  
+    *   Forbid：如果前一个作业未完成，则跳过新作业  
+    *   Replace：取消当前正在运行的作业并启动新作业
 
 <!-- -->
 
 * startingDeadlineSeconds
 
-    Optional. Deadline in seconds for starting the job if it misses its scheduled time.
+    选填。如果作业错过了计划时间，启动作业的截止时间（秒）。
 
 * suspend
 
-    Optional. If set to true, all subsequent executions will be suspended.
+    选填。如果设置为 true，所有后续执行将被挂起。
 
 * jobTemplate
 
-    Required. The template for creating Volcano Jobs. Contains the complete Volcano Job specification.
+    必填。用于创建 Volcano Job 的模板。包含完整的 Volcano Job 规范。
 
 * successfulJobsHistoryLimit
 
-    Optional. Number of successful finished jobs to retain. Defaults to 3.
+    选填。保留的成功完成作业的数量。默认为 3。
 
 * failedJobsHistoryLimit
 
-    Optional. Number of failed finished jobs to retain. Defaults to 1.
+    选填。保留的失败完成作业的数量。默认为 1。
 
 <!-- -->
 
-### Usage
-* Periodic Model Training
+### 用法
+* 定期模型训练
 
-Automatically start distributed model training tasks daily during off-peak hours, utilizing cluster idle time for large-scale machine learning training.
+在非高峰时段每天自动启动分布式模型训练任务，利用集群空闲时间进行大规模机器学习训练。
 ```shell
 apiVersion: batch.volcano.sh/v1alpha1
 kind: CronJob
 metadata:
   name: daily-model-training
 spec:
-  schedule: "0 2 * * *"  # Run daily at 2 AM
+  schedule: "0 2 * * *"  # 每天凌晨 2 点运行
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -103,23 +104,23 @@ spec:
         - replicas: 1
           name: ps
           template:
-            # Parameter server configuration
+            # 参数服务器配置
         - replicas: 3  
           name: worker
           template:
-            # Training worker configuration
+            # 训练 worker 配置
 ```
 
-* Scheduled Resource Cleanup
+* 定时资源清理
 
-Clean up temporary data and log files every Sunday evening to free up cluster storage space.
+每周日晚上清理临时数据和日志文件，以释放集群存储空间。
 ```shell
 apiVersion: batch.volcano.sh/v1alpha1
 kind: CronJob
 metadata:
   name: weekly-cleanup
 spec:
-  schedule: "0 22 * * 0"  # Run every Sunday at 10 PM
+  schedule: "0 22 * * 0"  # 每周日晚上 10 点运行
   timeZone: "Asia/Shanghai"
   jobTemplate:
     spec:
@@ -129,5 +130,5 @@ spec:
         - replicas: 1
           name: cleanup
           template:
-            # Cleanup task container configuration
+            # 清理任务容器配置
 ```
