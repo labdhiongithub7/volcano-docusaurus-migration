@@ -6,7 +6,7 @@ authors: ["程运之/锐天投资技术架构部研发总监"]
 tags: ["Practice"]
 ---
 
->本文2021年6月15日首发于容器魔方微信公众号，原文链接[锐天投资基于Volcano的大规模分布式离线计算平台的应用实践](https://mp.weixin.qq.com/s/dC4IDNG7FMGLigNJaj_Qug)  
+>本文首发于容器魔方微信公众号，原文链接[锐天投资基于Volcano的大规模分布式离线计算平台的应用实践](https://mp.weixin.qq.com/s/dC4IDNG7FMGLigNJaj_Qug)  
 
 ## 业务场景与技术选型
 
