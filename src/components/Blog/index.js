@@ -28,47 +28,45 @@ export default function Blog() {
         <Translate>Recent Posts</Translate>
       </h1>
       {recentPosts.length > 0 ? (
-        <>
-          <div className="blogPostsContainer">
-            {recentPosts.map((post, idx) => {
-              const { day, month, year } = formatDate(post.date);
-              const author =
-                Array.isArray(post.authors) && post.authors.length > 0
-                  ? post.authors[0]
-                  : "Volcano";
+        <div className="blogPostsContainer">
+          {recentPosts.map((post, idx) => {
+            const { day, month, year } = formatDate(post.date);
+            const author =
+              Array.isArray(post.authors) && post.authors.length > 0
+                ? post.authors[0]
+                : "Volcano";
 
-              return (
-                <div key={post.id || idx} className="blogPostCard">
-                  <div className="blogPostDate">
-                    <div className="blogPostDay">{day}</div>
-                    <div className="blogPostMonthYear">
-                      <div className="blogPostMonth">{month}</div>
-                      <div className="blogPostYear">{year}</div>
-                    </div>
-                  </div>
-                  <div className="blogPostContent">
-                    <h3 className="blogPostTitle">
-                      <Link to={post.permalink}>{post.title}</Link>
-                    </h3>
-                    <div className="blogPostAuthor">
-                      <img
-                        src="/img/icon_user.svg"
-                        alt="user"
-                        className="blogUserIcon"
-                      />
-                      <span>{author}</span>
-                    </div>
-                    {post.description && (
-                      <div className="blogPostDescription">
-                        {post.description}
-                      </div>
-                    )}
+            return (
+              <div key={post.id || idx} className="blogPostCard">
+                <div className="blogPostDate">
+                  <div className="blogPostDay">{day}</div>
+                  <div className="blogPostMonthYear">
+                    <div className="blogPostMonth">{month}</div>
+                    <div className="blogPostYear">{year}</div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </>
+                <div className="blogPostContent">
+                  <h3 className="blogPostTitle">
+                    <Link to={post.permalink}>{post.title}</Link>
+                  </h3>
+                  <div className="blogPostAuthor">
+                    <img
+                      src="/img/icon_user.svg"
+                      alt="user"
+                      className="blogUserIcon"
+                    />
+                    <span>{author}</span>
+                  </div>
+                  {post.description && (
+                    <div className="blogPostDescription">
+                      {post.description}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <p className="blogEmptyMessage">
           <Translate>Read the latest news and updates from the Volcano project.</Translate>

@@ -54,20 +54,9 @@ module.exports = function (context, options) {
 
         let authors = fm.authors || [];
         if (typeof authors === "string") {
-          if (authors.trim().startsWith("[") && authors.trim().endsWith("]")) {
-            try {
-              authors = JSON.parse(authors);
-            } catch (e) {
-              authors = [authors];
-            }
-          } else {
-            authors = [authors];
-          }
+          authors = [authors];
         }
-
-        if (Array.isArray(authors)) {
-          authors = authors.map(a => String(a).replace(/^[\[\\"']+|[\]\\\"']+$/g, "").trim()).filter(a => a.length > 0);
-        } else {
+        if (!Array.isArray(authors)) {
           authors = [];
         }
 
@@ -78,14 +67,15 @@ module.exports = function (context, options) {
           permalink,
           description: fm.description || "",
           authors,
-          timestamp,
+          _timestamp: timestamp,
         });
       }
 
 
-      posts.sort((a, b) => b.timestamp - a.timestamp);
+      posts.sort((a, b) => b._timestamp - a._timestamp);
 
-      actions.setGlobalData({ blogList: posts });
+      const blogList = posts.map(({ _timestamp, ...rest }) => rest);
+      actions.setGlobalData({ blogList });
     },
   };
 };
