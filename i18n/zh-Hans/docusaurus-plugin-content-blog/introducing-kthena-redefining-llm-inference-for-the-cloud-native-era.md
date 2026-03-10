@@ -1,7 +1,7 @@
 ﻿---
 title: "Volcano社区发布Kthena子项目: 重新定义大模型智能推理"
 description: "Volcano 社区迎来了一个新的子项目 Kthena！Kthena 是一个专为 Kubernetes 设计的、云原生、高性能的 LLM 推理路由和编排、调度系统。"
-date: 2025-12-29
+date: 2026-01-06
 authors: ["volcano"]
 tags: ["Practice"]
 ---
