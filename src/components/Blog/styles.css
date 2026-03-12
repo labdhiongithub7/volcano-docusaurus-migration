@@ -174,11 +174,10 @@
   color: var(--ifm-font-color-base);
   line-height: 1;
   text-align: center;
-  font-family: Georgia, 'Times New Roman', serif; /* serif like Hugo screenshot */
+  font-family: Georgia, 'Times New Roman', serif; 
   margin-right: 14px;
 }
 
-/* Right portion of date (slash + month/year), using inline styles in HTML for exact parity */
 .article-date-right {
   float: left;
   margin-top: 12px;
@@ -205,7 +204,6 @@
   color: var(--ifm-font-color-secondary);
 }
 
-/* Author meta aligned to the right like Hugo */
 .blogPostMeta {
   margin-left: 24px;
   display: flex;
@@ -216,7 +214,6 @@
   white-space: nowrap;
 }
 
-/* Blog title styles to match Hugo typography */
 .blogPostTitle {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.2rem;

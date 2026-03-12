@@ -23,7 +23,7 @@
   "Heterogeneous Device Support": {
     "message": "异构设备支持"
   },
-  "Efficiently schedules heterogeneous devices liKeyFeatures GPU and NPU, fully unleashing hardware computing potential.": {
+  "Efficiently schedules heterogeneous devices like GPU and NPU, fully unleashing hardware computing potential.": {
     "message": "高效调度 GPU、NPU 等异构设备，充分释放硬件算力潜能。"
   },
   "Network Topology Aware Scheduling": {
@@ -58,9 +58,6 @@
   },
   "Why Volcano": {
     "message": "为什么选择 Volcano"
-  },
-  "Efficiently schedules heterogeneous devices like GPU and NPU, fully unleashing hardware computing potential.": {
-    "message": "高效调度 GPU、NPU 等异构设备，充分释放硬件算力潜能。"
   },
   "Cloud native batch scheduling system for compute-intensive workloads": {
     "message": "面向计算密集型工作负载的云原生批量调度系统"
